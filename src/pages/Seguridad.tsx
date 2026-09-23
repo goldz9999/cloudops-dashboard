@@ -1,0 +1,187 @@
+import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { securityItems, sharedResponsibility, iamCards } from '../data/mockData';
+
+const statusIcon = {
+  healthy: <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />,
+  review: <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />,
+  issue: <XCircle className="w-4 h-4 text-[#DC2626]" />,
+};
+
+const statusBadge = {
+  healthy: 'bg-green-50 text-[#16A34A] border-green-200',
+  review: 'bg-amber-50 text-[#F59E0B] border-amber-200',
+  issue: 'bg-red-50 text-[#DC2626] border-red-200',
+};
+
+export default function Seguridad() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-[#1E293B]">Seguridad</h1>
+        <p className="text-sm text-[#64748B] mt-0.5">
+          Security Overview — IAM, protección de datos, cuentas y cumplimiento
+        </p>
+      </div>
+
+      {/* Top summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 col-span-2 lg:col-span-1">
+          <p className="text-xs text-[#64748B] mb-1">Security Score</p>
+          <div className="flex items-end gap-2">
+            <span className="text-3xl font-bold text-[#16A34A]">{securityItems.score}%</span>
+          </div>
+        </div>
+        {[
+          { label: 'IAM', status: securityItems.iam },
+          { label: 'Data Protection', status: securityItems.dataProtection },
+          { label: 'Account Protection', status: securityItems.accountProtection },
+          { label: 'Compliance', status: securityItems.compliance },
+        ].map((item) => (
+          <div key={item.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+            <p className="text-xs text-[#64748B] mb-2">{item.label}</p>
+            <div className="flex items-center gap-2">
+              {statusIcon[item.status]}
+              <span className={`text-sm font-medium capitalize ${item.status === 'healthy' ? 'text-[#16A34A]' : item.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'}`}>
+                {item.status === 'healthy' ? 'Healthy' : item.status === 'review' ? 'Review' : 'Issue'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Shared Responsibility Model */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-[#1E293B]">AWS</h2>
+              <p className="text-xs text-[#64748B]">Responsabilidad de AWS</p>
+            </div>
+          </div>
+          <ul className="space-y-2">
+            {sharedResponsibility.aws.map((item) => (
+              <li key={item} className="flex items-center gap-2 text-sm text-[#1E293B]">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Users className="w-4 h-4 text-[#2563EB]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-[#1E293B]">Customer</h2>
+              <p className="text-xs text-[#64748B]">Responsabilidad del cliente</p>
+            </div>
+          </div>
+          <ul className="space-y-2">
+            {sharedResponsibility.customer.map((item) => (
+              <li key={item} className="flex items-center gap-2 text-sm text-[#1E293B]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* IAM Cards */}
+      <div>
+        <h2 className="text-sm font-semibold text-[#1E293B] mb-3">IAM — Identity and Access Management</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {iamCards.map((card) => (
+            <div key={card.title} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-[#64748B]">{card.title}</span>
+                {statusIcon[card.status]}
+              </div>
+              <p className="text-lg font-semibold text-[#1E293B]">{card.value}</p>
+              <p className="text-[11px] text-[#64748B] mt-1">{card.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Account & Data Protection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+          <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+            <Key className="w-4 h-4 text-[#2563EB]" />
+            Protección de cuentas
+          </h2>
+          <div className="space-y-3">
+            {[
+              { label: 'Root account MFA', status: 'healthy' as const },
+              { label: 'IAM users MFA', status: 'healthy' as const },
+              { label: 'Access keys rotation', status: 'review' as const },
+              { label: 'Password policy', status: 'healthy' as const },
+              { label: 'CloudTrail enabled', status: 'healthy' as const },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between">
+                <span className="text-sm text-[#1E293B]">{item.label}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
+                  {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+          <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+            <Lock className="w-4 h-4 text-[#16A34A]" />
+            Protección de datos
+          </h2>
+          <div className="space-y-3">
+            {[
+              { label: 'Encryption at rest', status: 'healthy' as const },
+              { label: 'Encryption in transit', status: 'healthy' as const },
+              { label: 'Automated backups', status: 'healthy' as const },
+              { label: 'Access Control Lists', status: 'review' as const },
+              { label: 'S3 Block Public Access', status: 'healthy' as const },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between">
+                <span className="text-sm text-[#1E293B]">{item.label}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
+                  {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Compliance */}
+      <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+        <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-[#2563EB]" />
+          Cumplimiento
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { name: 'ISO 27001', status: 'healthy' as const },
+            { name: 'SOC 2', status: 'healthy' as const },
+            { name: 'GDPR', status: 'healthy' as const },
+            { name: 'HIPAA', status: 'review' as const },
+          ].map((item) => (
+            <div
+              key={item.name}
+              className={`rounded-lg border p-3 ${statusBadge[item.status]}`}
+            >
+              <p className="text-sm font-medium">{item.name}</p>
+              <p className="text-xs mt-1">
+                {item.status === 'healthy' ? '🟢 Compliant' : '🟡 Under review'}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
