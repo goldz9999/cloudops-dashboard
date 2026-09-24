@@ -10,7 +10,6 @@ import {
   Server,
   Menu,
   X,
-  Bell,
   ChevronRight,
   CloudCog,
   Sun,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react';
 import RegionSelector from '../components/RegionSelector';
 import RegionsModal from '../components/RegionsModal';
+import NotificationBell from '../components/NotificationBell';
 import { useRegion } from '../context/useRegion';
 import { useTheme } from '../context/useTheme';
 import { regionStatusLabel } from '../data/regionData';
@@ -202,10 +202,7 @@ export default function MainLayout() {
             </button>
 
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-              <Bell className="w-5 h-5 text-text-secondary" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-alerts" />
-            </button>
+            <NotificationBell />
 
             {/* Avatar */}
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">

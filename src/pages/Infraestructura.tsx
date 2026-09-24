@@ -8,24 +8,24 @@ const statusConfig = {
     label: 'Operativo',
     color: 'bg-[#16A34A]',
     text: 'text-[#16A34A]',
-    bg: 'bg-green-50',
-    border: 'border-green-200',
+    bg: 'bg-green-50 dark:bg-green-500/10',
+    border: 'border-green-200 dark:border-green-500/30',
     pin: '#22C55E',
   },
   review: {
     label: 'Requiere revisión',
     color: 'bg-[#F59E0B]',
     text: 'text-[#F59E0B]',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
+    bg: 'bg-amber-50 dark:bg-amber-500/10',
+    border: 'border-amber-200 dark:border-amber-500/30',
     pin: '#F59E0B',
   },
   issue: {
     label: 'Problema',
     color: 'bg-[#DC2626]',
     text: 'text-[#DC2626]',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
+    bg: 'bg-red-50 dark:bg-red-500/10',
+    border: 'border-red-200 dark:border-red-500/30',
     pin: '#EF4444',
   },
 };
@@ -126,8 +126,8 @@ export default function Infraestructura() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-[#1E293B]">Infraestructura Global</h1>
-        <p className="text-sm text-[#64748B] mt-0.5">
+        <h1 className="text-xl font-semibold text-text-main">Infraestructura Global</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
           Vista global de regiones y servicios desplegados en la infraestructura Cloud
         </p>
       </div>
@@ -142,10 +142,10 @@ export default function Infraestructura() {
         ].map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
               <Icon className="w-4 h-4 text-[#2563EB] mb-2" />
-              <p className="text-2xl font-semibold text-[#1E293B]">{kpi.value}</p>
-              <p className="text-xs text-[#64748B]">{kpi.label}</p>
+              <p className="text-2xl font-semibold text-text-main">{kpi.value}</p>
+              <p className="text-xs text-text-secondary">{kpi.label}</p>
             </div>
           );
         })}
@@ -154,10 +154,10 @@ export default function Infraestructura() {
       {/* Map LEFT + Regions RIGHT */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* World Map - Left */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-[#E2E8F0] p-4">
+        <div className="lg:col-span-3 bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-[#1E293B]">Mapa mundial</h2>
-            <div className="flex items-center gap-3 text-[11px] text-[#64748B]">
+            <h2 className="text-sm font-semibold text-text-main">Mapa mundial</h2>
+            <div className="flex items-center gap-3 text-[11px] text-text-secondary">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
                 Operativo
@@ -314,7 +314,7 @@ export default function Infraestructura() {
               </g>
             </svg>
 
-            <p className="absolute bottom-1.5 left-2 text-[9px] text-[#64748B]">
+            <p className="absolute bottom-1.5 left-2 text-[9px] text-text-secondary">
               Arrastra para mover · rueda del mouse para zoom
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function Infraestructura() {
 
         {/* Regions list - Right */}
         <div className="lg:col-span-2 flex flex-col">
-          <h2 className="text-sm font-semibold text-[#1E293B] px-1 mb-3">Regiones y servidores</h2>
+          <h2 className="text-sm font-semibold text-text-main px-1 mb-3">Regiones y servidores</h2>
           <div className="space-y-3 lg:overflow-y-auto lg:pr-1 lg:h-[360px]">
           {regions.map((region) => {
             const cfg = statusConfig[region.status];
@@ -335,8 +335,8 @@ export default function Infraestructura() {
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${cfg.color}`} />
                     <div>
-                      <p className="text-sm font-semibold text-[#1E293B]">{region.name}</p>
-                      <p className="text-[11px] text-[#64748B]">{region.location}</p>
+                      <p className="text-sm font-semibold text-text-main">{region.name}</p>
+                      <p className="text-[11px] text-text-secondary">{region.location}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -359,7 +359,7 @@ export default function Infraestructura() {
                   {region.services.map((svc) => (
                     <span
                       key={svc}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white text-[#1E293B] border border-[#E2E8F0]"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-card text-text-main border border-border"
                     >
                       <Server className="w-2.5 h-2.5 text-[#2563EB]" />
                       {svc}
@@ -378,11 +378,11 @@ export default function Infraestructura() {
         {regions.map((region) => {
           const cfg = statusConfig[region.status];
           return (
-            <div key={region.id} className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+            <div key={region.id} className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-[#1E293B]">{region.name}</h3>
-                  <p className="text-xs text-[#64748B]">
+                  <h3 className="text-sm font-semibold text-text-main">{region.name}</h3>
+                  <p className="text-xs text-text-secondary">
                     {region.location} · {region.id}
                   </p>
                 </div>
@@ -391,15 +391,15 @@ export default function Infraestructura() {
                 </span>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-medium text-[#64748B]">Servicios activos</p>
+                <p className="text-xs font-medium text-text-secondary">Servicios activos</p>
                 <div className="grid grid-cols-2 gap-2">
                   {region.services.map((svc) => (
                     <div
                       key={svc}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-[#E2E8F0] text-sm"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border text-sm"
                     >
                       <Server className="w-3.5 h-3.5 text-[#2563EB]" />
-                      <span className="font-medium text-[#1E293B]">{svc}</span>
+                      <span className="font-medium text-text-main">{svc}</span>
                     </div>
                   ))}
                 </div>

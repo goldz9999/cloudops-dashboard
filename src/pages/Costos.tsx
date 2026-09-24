@@ -14,6 +14,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useRegion } from '../context/useRegion';
+import { useNotifications } from '../context/useNotifications';
 import { regionLabel, type CostRow } from '../data/regionData';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];
@@ -72,6 +73,7 @@ export default function Costos() {
 
 function CostosContent({ initialData, regionText }: { initialData: CostRow[]; regionText: string }) {
   const [rows, setRows] = useState<CostRow[]>(initialData);
+  const { notify } = useNotifications();
 
   const [form, setForm] = useState({
     service: 'EC2',
@@ -123,10 +125,17 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
         monthly,
       },
     ]);
+    notify({
+      type: 'success',
+      title: 'Recurso agregado',
+      message: `${form.service} — $${monthly.toFixed(2)}/mes.`,
+    });
   };
 
   const removeRow = (id: number) => {
+    const removed = rows.find((r) => r.id === id);
     setRows((prev) => prev.filter((r) => r.id !== id));
+    if (removed) notify({ type: 'info', title: 'Recurso eliminado', message: `Se quitó ${removed.service} de la tabla de costos.` });
   };
 
   // La distribución sale de las filas actuales (se actualiza al editar la tabla)
@@ -152,10 +161,10 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-[#1E293B]">Costos</h1>
-        <p className="text-sm text-[#64748B] mt-0.5">
+        <h1 className="text-xl font-semibold text-text-main">Costos</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
           Análisis financiero y calculadora de costos de la infraestructura Cloud en{' '}
-          <span className="font-medium text-[#1E293B]">{regionText}</span>
+          <span className="font-medium text-text-main">{regionText}</span>
         </p>
       </div>
 
@@ -169,10 +178,10 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
         ].map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
               <Icon className={`w-4 h-4 ${kpi.color} mb-2`} />
-              <p className="text-xl font-semibold text-[#1E293B]">{kpi.value}</p>
-              <p className="text-xs text-[#64748B] mt-0.5">{kpi.label}</p>
+              <p className="text-xl font-semibold text-text-main">{kpi.value}</p>
+              <p className="text-xs text-text-secondary mt-0.5">{kpi.label}</p>
             </div>
           );
         })}
@@ -181,12 +190,12 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
       {/* Calculator + Form */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
         {/* Table */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Calculadora de costos</h2>
+        <div className="xl:col-span-2 bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-4">Calculadora de costos</h2>
           <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white">
-                <tr className="border-b border-[#E2E8F0] text-left text-xs text-[#64748B]">
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b border-border text-left text-xs text-text-secondary">
                   <th className="pb-2.5 font-medium pr-3">Servicio</th>
                   <th className="pb-2.5 font-medium pr-3 text-right">Cantidad</th>
                   <th className="pb-2.5 font-medium pr-3 text-right">Horas</th>
@@ -197,31 +206,31 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-[#E2E8F0]/last:border-0">
-                    <td className="py-2.5 pr-3 font-medium text-[#1E293B]">{row.service}</td>
+                  <tr key={row.id} className="border-b border-border last:border-0">
+                    <td className="py-2.5 pr-3 font-medium text-text-main">{row.service}</td>
                     <td className="py-2 pr-3 text-right">
                       <NumInput
                         min={1}
                         value={row.quantity}
                         onChange={(v) => updateRow(row.id, 'quantity', v)}
-                        className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                        className="w-20 px-2 py-1 rounded border border-border text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </td>
                     <td className="py-2 pr-3 text-right">
                       <NumInput
                         value={row.hours}
                         onChange={(v) => updateRow(row.id, 'hours', v)}
-                        className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                        className="w-20 px-2 py-1 rounded border border-border text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </td>
-                    <td className="py-2.5 pr-3 text-right text-[#64748B] tabular-nums">${row.rate}</td>
-                    <td className="py-2.5 pr-3 text-right font-medium text-[#1E293B]">
+                    <td className="py-2.5 pr-3 text-right text-text-secondary tabular-nums">${row.rate}</td>
+                    <td className="py-2.5 pr-3 text-right font-medium text-text-main">
                       ${row.monthly.toFixed(2)}
                     </td>
                     <td className="py-2">
                       <button
                         onClick={() => removeRow(row.id)}
-                        className="p-1 rounded hover:bg-red-50 text-[#64748B] hover:text-[#DC2626]"
+                        className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-text-secondary hover:text-[#DC2626]"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -230,11 +239,11 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-[#E2E8F0]">
-                  <td colSpan={4} className="pt-3 text-right text-sm font-medium text-[#64748B]">
+                <tr className="border-t border-border">
+                  <td colSpan={4} className="pt-3 text-right text-sm font-medium text-text-secondary">
                     Total mensual
                   </td>
-                  <td className="pt-3 text-right text-sm font-semibold text-[#1E293B]">
+                  <td className="pt-3 text-right text-sm font-semibold text-text-main">
                     ${totalMonthly.toFixed(2)}
                   </td>
                   <td></td>
@@ -245,15 +254,15 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
         </div>
 
         {/* Form to add resource */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Agregar recurso</h2>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-4">Agregar recurso</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Servicio</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Servicio</label>
               <select
                 value={form.service}
                 onChange={(e) => handleServiceChange(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 bg-white"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card text-text-main focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               >
                 {SERVICE_OPTIONS.map((opt) => (
                   <option key={opt.name} value={opt.name}>
@@ -264,35 +273,35 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Cantidad</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Cantidad</label>
               <NumInput
                 min={1}
                 value={form.quantity}
                 onChange={(v) => setForm((prev) => ({ ...prev, quantity: v }))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card text-text-main focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Horas</label>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Horas</label>
               <NumInput
                 value={form.hours}
                 onChange={(v) => setForm((prev) => ({ ...prev, hours: v }))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card text-text-main focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Tarifa ($ / hora)</label>
-              <div className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] bg-slate-50 text-[#64748B] cursor-not-allowed">
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Tarifa ($ / hora)</label>
+              <div className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-slate-50 dark:bg-slate-800/50 text-text-secondary cursor-not-allowed">
                 ${form.rate}
               </div>
               <p className="text-[11px] text-[#94A3B8] mt-1">Tarifa fija según el servicio</p>
             </div>
 
-            <div className="pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-sm">
-              <span className="text-[#64748B]">Costo estimado</span>
-              <span className="font-semibold text-[#1E293B]">${formMonthly.toFixed(2)}</span>
+            <div className="pt-2 border-t border-border flex items-center justify-between text-sm">
+              <span className="text-text-secondary">Costo estimado</span>
+              <span className="font-semibold text-text-main">${formMonthly.toFixed(2)}</span>
             </div>
 
             <button
@@ -308,8 +317,8 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
 
       {/* Charts + Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-3">Distribución de costos</h2>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-3">Distribución de costos</h2>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -326,51 +335,51 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ fontSize: 12 }} />
+                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ fontSize: 12, backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text-main)' }} itemStyle={{ color: 'var(--color-text-main)' }} />
                 <Legend formatter={(v) => <span className="text-xs">{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-3">Comparativo mensual / anual</h2>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-3">Comparativo mensual / anual</h2>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }} />
+                <Tooltip contentStyle={{ fontSize: 12, backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text-main)' }} itemStyle={{ color: 'var(--color-text-main)' }} />
                 <Bar dataKey="monthly" fill="#2563EB" name="Mensual" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Resumen</h2>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-4">Resumen</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-[#64748B]">Costo mensual estimado</dt>
-              <dd className="font-semibold text-[#1E293B]">${totalMonthly.toFixed(2)}</dd>
+              <dt className="text-text-secondary">Costo mensual estimado</dt>
+              <dd className="font-semibold text-text-main">${totalMonthly.toFixed(2)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-[#64748B]">Costo anual estimado</dt>
-              <dd className="font-semibold text-[#1E293B]">
+              <dt className="text-text-secondary">Costo anual estimado</dt>
+              <dd className="font-semibold text-text-main">
                 ${totalAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-[#64748B]">Mayor costo</dt>
+              <dt className="text-text-secondary">Mayor costo</dt>
               <dd className="font-semibold text-[#F59E0B]">{highest?.service || '—'}</dd>
             </div>
-            <div className="pt-2 border-t border-[#E2E8F0]">
-              <p className="text-xs text-[#64748B] mb-2">Distribución de costos</p>
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-text-secondary mb-2">Distribución de costos</p>
               {costDistribution.map((c) => (
                 <div key={c.name} className="flex justify-between text-xs mb-1">
-                  <span className="text-[#64748B]">{c.name}</span>
-                  <span className="font-medium text-[#1E293B]">{c.percentage}%</span>
+                  <span className="text-text-secondary">{c.name}</span>
+                  <span className="font-medium text-text-main">{c.percentage}%</span>
                 </div>
               ))}
             </div>

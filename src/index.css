@@ -23,6 +23,7 @@
   --color-text-secondary: #94A3B8;
   --color-border: #1E293B;
   --color-card: #111827;
+  color-scheme: dark;
 }
 
 * {

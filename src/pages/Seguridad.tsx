@@ -10,9 +10,9 @@ const statusIcon = {
 };
 
 const statusBadge = {
-  healthy: 'bg-green-50 text-[#16A34A] border-green-200',
-  review: 'bg-amber-50 text-[#F59E0B] border-amber-200',
-  issue: 'bg-red-50 text-[#DC2626] border-red-200',
+  healthy: 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30',
+  review: 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30',
+  issue: 'bg-red-50 dark:bg-red-500/10 text-[#DC2626] border-red-200 dark:border-red-500/30',
 };
 
 export default function Seguridad() {
@@ -21,10 +21,10 @@ export default function Seguridad() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-[#1E293B]">Seguridad</h1>
-        <p className="text-sm text-[#64748B] mt-0.5">
+        <h1 className="text-xl font-semibold text-text-main">Seguridad</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
           Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento en{' '}
-          <span className="font-medium text-[#1E293B]">
+          <span className="font-medium text-text-main">
             {region.id} — {regionLabel(region)}
           </span>
         </p>
@@ -32,8 +32,8 @@ export default function Seguridad() {
 
       {/* Top summary */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 col-span-2 lg:col-span-1">
-          <p className="text-xs text-[#64748B] mb-1">Puntaje de seguridad</p>
+        <div className="bg-card rounded-xl border border-border p-4 col-span-2 lg:col-span-1">
+          <p className="text-xs text-text-secondary mb-1">Puntaje de seguridad</p>
           <div className="flex items-end gap-2">
             <span className="text-3xl font-bold text-[#16A34A]">{securityItems.score}%</span>
           </div>
@@ -44,8 +44,8 @@ export default function Seguridad() {
           { label: 'Protección de cuentas', status: securityItems.accountProtection },
           { label: 'Cumplimiento', status: securityItems.compliance },
         ].map((item) => (
-          <div key={item.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
-            <p className="text-xs text-[#64748B] mb-2">{item.label}</p>
+          <div key={item.label} className="bg-card rounded-xl border border-border p-4">
+            <p className="text-xs text-text-secondary mb-2">{item.label}</p>
             <div className="flex items-center gap-2">
               {statusIcon[item.status]}
               <span className={`text-sm font-medium capitalize ${item.status === 'healthy' ? 'text-[#16A34A]' : item.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'}`}>
@@ -58,38 +58,38 @@ export default function Seguridad() {
 
       {/* Shared Responsibility Model */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center">
               <Shield className="w-4 h-4 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-[#1E293B]">AWS</h2>
-              <p className="text-xs text-[#64748B]">Responsabilidad de AWS</p>
+              <h2 className="text-sm font-semibold text-text-main">AWS</h2>
+              <p className="text-xs text-text-secondary">Responsabilidad de AWS</p>
             </div>
           </div>
           <ul className="space-y-2">
             {sharedResponsibility.aws.map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm text-[#1E293B]">
+              <li key={item} className="flex items-center gap-2 text-sm text-text-main">
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
                 {item}
               </li>
             ))}
           </ul>
         </div>
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
               <Users className="w-4 h-4 text-[#2563EB]" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-[#1E293B]">Cliente</h2>
-              <p className="text-xs text-[#64748B]">Responsabilidad del cliente</p>
+              <h2 className="text-sm font-semibold text-text-main">Cliente</h2>
+              <p className="text-xs text-text-secondary">Responsabilidad del cliente</p>
             </div>
           </div>
           <ul className="space-y-2">
             {sharedResponsibility.customer.map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm text-[#1E293B]">
+              <li key={item} className="flex items-center gap-2 text-sm text-text-main">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
                 {item}
               </li>
@@ -100,16 +100,16 @@ export default function Seguridad() {
 
       {/* IAM Cards */}
       <div>
-        <h2 className="text-sm font-semibold text-[#1E293B] mb-3">IAM — Gestión de identidades y accesos</h2>
+        <h2 className="text-sm font-semibold text-text-main mb-3">IAM — Gestión de identidades y accesos</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {iamCards.map((card) => (
-            <div key={card.title} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+            <div key={card.title} className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-[#64748B]">{card.title}</span>
+                <span className="text-xs font-medium text-text-secondary">{card.title}</span>
                 {statusIcon[card.status]}
               </div>
-              <p className="text-lg font-semibold text-[#1E293B]">{card.value}</p>
-              <p className="text-[11px] text-[#64748B] mt-1">{card.description}</p>
+              <p className="text-lg font-semibold text-text-main">{card.value}</p>
+              <p className="text-[11px] text-text-secondary mt-1">{card.description}</p>
             </div>
           ))}
         </div>
@@ -117,8 +117,8 @@ export default function Seguridad() {
 
       {/* Account & Data Protection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
             <Key className="w-4 h-4 text-[#2563EB]" />
             Protección de cuentas
           </h2>
@@ -131,7 +131,7 @@ export default function Seguridad() {
               { label: 'CloudTrail habilitado', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-[#1E293B]">{item.label}</span>
+                <span className="text-sm text-text-main">{item.label}</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
                   {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
                 </span>
@@ -140,8 +140,8 @@ export default function Seguridad() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
             <Lock className="w-4 h-4 text-[#16A34A]" />
             Protección de datos
           </h2>
@@ -154,7 +154,7 @@ export default function Seguridad() {
               { label: 'Bloqueo de acceso público en S3', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-[#1E293B]">{item.label}</span>
+                <span className="text-sm text-text-main">{item.label}</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
                   {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
                 </span>
@@ -165,8 +165,8 @@ export default function Seguridad() {
       </div>
 
       {/* Compliance */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
-        <h2 className="text-sm font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+      <div className="bg-card rounded-xl border border-border p-5">
+        <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
           <FileText className="w-4 h-4 text-[#2563EB]" />
           Cumplimiento
         </h2>
