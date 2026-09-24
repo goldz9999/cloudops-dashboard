@@ -10,8 +10,8 @@ import Servicios from './pages/Servicios';
 import { RegionProvider } from './context/RegionContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
-import ToastContainer from './components/ToastContainer';
-import RegionNotifier from './components/RegionNotifier';
+import ToastContainer from './components/common/ToastContainer';
+import RegionNotifier from './components/common/RegionNotifier';
 
 export default function App() {
   return (

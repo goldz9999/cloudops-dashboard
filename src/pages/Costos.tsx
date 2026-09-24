@@ -17,7 +17,7 @@ import {
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
 import { regionLabel, type CostRow } from '../data/regionData';
-import ExportMenu from '../components/ExportMenu';
+import ExportMenu from '../components/common/ExportMenu';
 import { buildCostReport } from '../utils/reportBuilders';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];

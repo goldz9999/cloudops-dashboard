@@ -15,9 +15,9 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import RegionSelector from '../components/RegionSelector';
-import RegionsModal from '../components/RegionsModal';
-import NotificationBell from '../components/NotificationBell';
+import RegionSelector from '../components/common/RegionSelector';
+import RegionsModal from '../components/common/RegionsModal';
+import NotificationBell from '../components/common/NotificationBell';
 import { useRegion } from '../context/useRegion';
 import { useTheme } from '../context/useTheme';
 import { regionStatusLabel } from '../data/regionData';

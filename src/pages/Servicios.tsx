@@ -15,7 +15,7 @@ import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
 import { filterServices, matchesSearch } from '../utils/filterServices';
 import { usePersistentState } from '../hooks/usePersistentState';
-import ServiceDetailModal from '../components/ServiceDetailModal';
+import ServiceDetailModal from '../components/servicios/ServiceDetailModal';
 
 const iconMap: Record<string, React.ElementType> = {
   Server,

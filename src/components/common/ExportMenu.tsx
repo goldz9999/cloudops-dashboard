@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
-import { useNotifications } from '../context/useNotifications';
-import { exportCsv, exportPdf, type ReportData } from '../utils/exportReport';
+import { useNotifications } from '../../context/useNotifications';
+import { exportCsv, exportPdf, type ReportData } from '../../utils/exportReport';
 
 interface Props {
   /** Se llama al exportar, así el reporte siempre usa los datos actuales */

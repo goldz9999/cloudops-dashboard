@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X, Check, Globe2, Server, DollarSign, Activity } from 'lucide-react';
-import { useRegion } from '../context/useRegion';
-import { regionStatusLabel, summarizeRegion, type RegionStatus } from '../data/regionData';
+import { useRegion } from '../../context/useRegion';
+import { regionStatusLabel, summarizeRegion, type RegionStatus } from '../../data/regionData';
 
 const badge: Record<RegionStatus, string> = {
   operational: 'bg-green-50 dark:bg-green-500/10 text-security border-green-200 dark:border-green-500/30',

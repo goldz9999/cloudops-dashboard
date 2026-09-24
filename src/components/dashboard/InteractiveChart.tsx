@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePersistentState } from '../hooks/usePersistentState';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import {
   Area,
   AreaChart,
@@ -14,10 +14,10 @@ import {
   YAxis,
 } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { useRegion } from '../context/useRegion';
-import { regionLabel } from '../data/regionData';
-import { services as catalog } from '../data/mockData';
-import { buildCostTrend, buildUsageData, colorFor, costByService, type TrendRow } from '../utils/chartData';
+import { useRegion } from '../../context/useRegion';
+import { regionLabel } from '../../data/regionData';
+import { services as catalog } from '../../data/mockData';
+import { buildCostTrend, buildUsageData, colorFor, costByService, type TrendRow } from '../../utils/chartData';
 
 type Tab = 'trend' | 'cost' | 'usage';
 

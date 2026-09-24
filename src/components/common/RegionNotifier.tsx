@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useRegion } from '../context/useRegion';
-import { useNotifications } from '../context/useNotifications';
-import { regionLabel } from '../data/regionData';
-import { services as catalog } from '../data/mockData';
+import { useRegion } from '../../context/useRegion';
+import { useNotifications } from '../../context/useNotifications';
+import { regionLabel } from '../../data/regionData';
+import { services as catalog } from '../../data/mockData';
 
 const USAGE_ALERT_THRESHOLD = 80;
 

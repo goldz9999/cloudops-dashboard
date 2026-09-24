@@ -12,9 +12,9 @@ import {
   Activity,
   Boxes,
 } from 'lucide-react';
-import { services } from '../data/mockData';
-import { useRegion } from '../context/useRegion';
-import { regionLabel } from '../data/regionData';
+import { services } from '../../data/mockData';
+import { useRegion } from '../../context/useRegion';
+import { regionLabel } from '../../data/regionData';
 
 const iconMap: Record<string, React.ElementType> = {
   Server,

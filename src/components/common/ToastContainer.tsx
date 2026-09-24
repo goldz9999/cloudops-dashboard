@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useNotifications } from '../context/useNotifications';
-import type { Toast } from '../context/notificationContextValue';
+import { useNotifications } from '../../context/useNotifications';
+import type { Toast } from '../../context/notificationContextValue';
 import { notificationStyles } from './notificationStyles';
 
 const TOAST_DURATION_MS = 4500;

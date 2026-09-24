@@ -1,6 +1,6 @@
 import { Globe2 } from 'lucide-react';
-import { useRegion } from '../context/useRegion';
-import { regionLabel } from '../data/regionData';
+import { useRegion } from '../../context/useRegion';
+import { regionLabel } from '../../data/regionData';
 
 interface Props {
   /** Versión compacta para la barra superior */

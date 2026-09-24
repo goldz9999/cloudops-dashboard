@@ -1,5 +1,5 @@
 import { CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
-import type { NotificationType } from '../context/notificationContextValue';
+import type { NotificationType } from '../../context/notificationContextValue';
 
 export const notificationStyles: Record<
   NotificationType,

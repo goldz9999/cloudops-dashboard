@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, BellOff, X } from 'lucide-react';
-import { useNotifications } from '../context/useNotifications';
+import { useNotifications } from '../../context/useNotifications';
 import { notificationStyles } from './notificationStyles';
 
 const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });

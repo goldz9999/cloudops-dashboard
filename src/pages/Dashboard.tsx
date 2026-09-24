@@ -20,9 +20,9 @@ import {
 } from 'recharts';
 import { services } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
-import RegionSelector from '../components/RegionSelector';
-import InteractiveChart from '../components/InteractiveChart';
-import ExportMenu from '../components/ExportMenu';
+import RegionSelector from '../components/common/RegionSelector';
+import InteractiveChart from '../components/dashboard/InteractiveChart';
+import ExportMenu from '../components/common/ExportMenu';
 import { buildDashboardReport } from '../utils/reportBuilders';
 import { regionLabel, regionStatusLabel, type HealthStatus } from '../data/regionData';
 

@@ -2,7 +2,7 @@ import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircl
 import { sharedResponsibility, iamCards } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
-import ExportMenu from '../components/ExportMenu';
+import ExportMenu from '../components/common/ExportMenu';
 import { buildSecurityReport } from '../utils/reportBuilders';
 
 const statusIcon = {
