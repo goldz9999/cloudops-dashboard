@@ -19,30 +19,30 @@ export default function Seguridad() {
       <div>
         <h1 className="text-xl font-semibold text-[#1E293B]">Seguridad</h1>
         <p className="text-sm text-[#64748B] mt-0.5">
-          Security Overview — IAM, protección de datos, cuentas y cumplimiento
+          Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento
         </p>
       </div>
 
       {/* Top summary */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 col-span-2 lg:col-span-1">
-          <p className="text-xs text-[#64748B] mb-1">Security Score</p>
+          <p className="text-xs text-[#64748B] mb-1">Puntaje de seguridad</p>
           <div className="flex items-end gap-2">
             <span className="text-3xl font-bold text-[#16A34A]">{securityItems.score}%</span>
           </div>
         </div>
         {[
           { label: 'IAM', status: securityItems.iam },
-          { label: 'Data Protection', status: securityItems.dataProtection },
-          { label: 'Account Protection', status: securityItems.accountProtection },
-          { label: 'Compliance', status: securityItems.compliance },
+          { label: 'Protección de datos', status: securityItems.dataProtection },
+          { label: 'Protección de cuentas', status: securityItems.accountProtection },
+          { label: 'Cumplimiento', status: securityItems.compliance },
         ].map((item) => (
           <div key={item.label} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
             <p className="text-xs text-[#64748B] mb-2">{item.label}</p>
             <div className="flex items-center gap-2">
               {statusIcon[item.status]}
               <span className={`text-sm font-medium capitalize ${item.status === 'healthy' ? 'text-[#16A34A]' : item.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'}`}>
-                {item.status === 'healthy' ? 'Healthy' : item.status === 'review' ? 'Review' : 'Issue'}
+                {item.status === 'healthy' ? 'Saludable' : item.status === 'review' ? 'Revisar' : 'Problema'}
               </span>
             </div>
           </div>
@@ -76,7 +76,7 @@ export default function Seguridad() {
               <Users className="w-4 h-4 text-[#2563EB]" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-[#1E293B]">Customer</h2>
+              <h2 className="text-sm font-semibold text-[#1E293B]">Cliente</h2>
               <p className="text-xs text-[#64748B]">Responsabilidad del cliente</p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function Seguridad() {
 
       {/* IAM Cards */}
       <div>
-        <h2 className="text-sm font-semibold text-[#1E293B] mb-3">IAM — Identity and Access Management</h2>
+        <h2 className="text-sm font-semibold text-[#1E293B] mb-3">IAM — Gestión de identidades y accesos</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {iamCards.map((card) => (
             <div key={card.title} className="bg-white rounded-xl border border-[#E2E8F0] p-4">
@@ -117,11 +117,11 @@ export default function Seguridad() {
           </h2>
           <div className="space-y-3">
             {[
-              { label: 'Root account MFA', status: 'healthy' as const },
-              { label: 'IAM users MFA', status: 'healthy' as const },
-              { label: 'Access keys rotation', status: 'review' as const },
-              { label: 'Password policy', status: 'healthy' as const },
-              { label: 'CloudTrail enabled', status: 'healthy' as const },
+              { label: 'MFA de la cuenta raíz', status: 'healthy' as const },
+              { label: 'MFA de usuarios IAM', status: 'healthy' as const },
+              { label: 'Rotación de claves de acceso', status: 'review' as const },
+              { label: 'Política de contraseñas', status: 'healthy' as const },
+              { label: 'CloudTrail habilitado', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
                 <span className="text-sm text-[#1E293B]">{item.label}</span>
@@ -140,11 +140,11 @@ export default function Seguridad() {
           </h2>
           <div className="space-y-3">
             {[
-              { label: 'Encryption at rest', status: 'healthy' as const },
-              { label: 'Encryption in transit', status: 'healthy' as const },
-              { label: 'Automated backups', status: 'healthy' as const },
-              { label: 'Access Control Lists', status: 'review' as const },
-              { label: 'S3 Block Public Access', status: 'healthy' as const },
+              { label: 'Cifrado en reposo', status: 'healthy' as const },
+              { label: 'Cifrado en tránsito', status: 'healthy' as const },
+              { label: 'Copias de seguridad automáticas', status: 'healthy' as const },
+              { label: 'Listas de control de acceso (ACL)', status: 'review' as const },
+              { label: 'Bloqueo de acceso público en S3', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
                 <span className="text-sm text-[#1E293B]">{item.label}</span>
@@ -176,7 +176,7 @@ export default function Seguridad() {
             >
               <p className="text-sm font-medium">{item.name}</p>
               <p className="text-xs mt-1">
-                {item.status === 'healthy' ? '🟢 Compliant' : '🟡 Under review'}
+                {item.status === 'healthy' ? '🟢 Conforme' : '🟡 En revisión'}
               </p>
             </div>
           ))}

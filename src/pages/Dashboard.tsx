@@ -1,6 +1,6 @@
 import {
   Server,
-  HardDrive,
+ 
   DollarSign,
   Shield,
   Activity,
@@ -106,7 +106,7 @@ export default function Dashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Costo']}
+                  formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Costo']}
                   contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}
                 />
                 <Legend

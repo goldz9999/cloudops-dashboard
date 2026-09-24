@@ -122,29 +122,29 @@ export const securityItems = {
 
 export const sharedResponsibility = {
   aws: [
-    'Physical infrastructure',
+    'Infraestructura física',
     'Hardware',
-    'Networking',
-    'Data centers',
-    'Hypervisor',
+    'Redes',
+    'Centros de datos',
+    'Hipervisor',
   ],
   customer: [
     'IAM',
-    'Data encryption',
-    'Permissions',
-    'Configuration',
-    'Passwords & MFA',
-    'Applications',
-    'Operating system patches',
+    'Cifrado de datos',
+    'Permisos',
+    'Configuración',
+    'Contraseñas y MFA',
+    'Aplicaciones',
+    'Parches del sistema operativo',
   ],
 };
 
 export const iamCards = [
-  { title: 'Users', value: 12, status: 'healthy' as const, description: 'Active IAM users' },
-  { title: 'Roles', value: 8, status: 'healthy' as const, description: 'Service roles configured' },
-  { title: 'Policies', value: 24, status: 'review' as const, description: 'Custom policies' },
-  { title: 'MFA', value: 'Enabled', status: 'healthy' as const, description: 'Root & users protected' },
-  { title: 'Least Privilege', value: 'Partial', status: 'review' as const, description: 'Review over-privileged roles' },
+  { title: 'Usuarios', value: 12, status: 'healthy' as const, description: 'Usuarios IAM activos' },
+  { title: 'Roles', value: 8, status: 'healthy' as const, description: 'Roles de servicio configurados' },
+  { title: 'Políticas', value: 24, status: 'review' as const, description: 'Políticas personalizadas' },
+  { title: 'MFA', value: 'Habilitado', status: 'healthy' as const, description: 'Cuenta raíz y usuarios protegidos' },
+  { title: 'Mínimo privilegio', value: 'Parcial', status: 'review' as const, description: 'Revisar roles con exceso de permisos' },
 ];
 
 export const costTableData = [

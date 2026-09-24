@@ -36,6 +36,42 @@ interface CostRow {
   monthly: number;
 }
 
+
+interface NumInputProps {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  className?: string;
+}
+
+// Input numérico que permite borrar el contenido mientras se escribe.
+// Mantiene el texto localmente y solo propaga números válidos; al salir del campo
+// (blur) restaura el último valor válido si quedó vacío.
+function NumInput({ value, onChange, min = 0, className }: NumInputProps) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      min={min}
+      value={focused ? text : String(value)}
+      onFocus={() => {
+        setText(String(value));
+        setFocused(true);
+      }}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = parseFloat(e.target.value);
+        onChange(Number.isFinite(n) ? Math.max(n, min) : min);
+      }}
+      onBlur={() => setFocused(false)}
+      className={className}
+    />
+  );
+}
+
 export default function Costos() {
   const [rows, setRows] = useState<CostRow[]>(initialData);
 
@@ -57,7 +93,7 @@ export default function Costos() {
       prev.map((r) => {
         if (r.id !== id) return r;
         const updated = { ...r, [field]: value };
-        if (field === 'quantity' || field === 'hours' || field === 'rate') {
+        if (field === 'quantity' || field === 'hours') {
           updated.monthly = +(updated.quantity * updated.hours * updated.rate).toFixed(2);
         }
         return updated;
@@ -153,30 +189,21 @@ export default function Costos() {
                   <tr key={row.id} className="border-b border-[#E2E8F0]/last:border-0">
                     <td className="py-2.5 pr-3 font-medium text-[#1E293B]">{row.service}</td>
                     <td className="py-2 pr-3 text-right">
-                      <input
-                        type="number"
+                      <NumInput
+                        min={1}
                         value={row.quantity}
-                        onChange={(e) => updateRow(row.id, 'quantity', +e.target.value)}
-                        className="w-16 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                      />
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      <input
-                        type="number"
-                        value={row.hours}
-                        onChange={(e) => updateRow(row.id, 'hours', +e.target.value)}
-                        className="w-16 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                      />
-                    </td>
-                    <td className="py-2 pr-3 text-right">
-                      <input
-                        type="number"
-                        step="0.0001"
-                        value={row.rate}
-                        onChange={(e) => updateRow(row.id, 'rate', +e.target.value)}
+                        onChange={(v) => updateRow(row.id, 'quantity', v)}
                         className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </td>
+                    <td className="py-2 pr-3 text-right">
+                      <NumInput
+                        value={row.hours}
+                        onChange={(v) => updateRow(row.id, 'hours', v)}
+                        className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-sm text-right focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                      />
+                    </td>
+                    <td className="py-2.5 pr-3 text-right text-[#64748B] tabular-nums">${row.rate}</td>
                     <td className="py-2.5 pr-3 text-right font-medium text-[#1E293B]">
                       ${row.monthly.toFixed(2)}
                     </td>
@@ -227,36 +254,29 @@ export default function Costos() {
 
             <div>
               <label className="block text-xs font-medium text-[#64748B] mb-1.5">Cantidad</label>
-              <input
-                type="number"
+              <NumInput
                 min={1}
                 value={form.quantity}
-                onChange={(e) => setForm((prev) => ({ ...prev, quantity: +e.target.value || 1 }))}
+                onChange={(v) => setForm((prev) => ({ ...prev, quantity: v }))}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#64748B] mb-1.5">Horas</label>
-              <input
-                type="number"
-                min={0}
+              <NumInput
                 value={form.hours}
-                onChange={(e) => setForm((prev) => ({ ...prev, hours: +e.target.value || 0 }))}
+                onChange={(v) => setForm((prev) => ({ ...prev, hours: v }))}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Tarifa ($)</label>
-              <input
-                type="number"
-                step="0.0001"
-                min={0}
-                value={form.rate}
-                onChange={(e) => setForm((prev) => ({ ...prev, rate: +e.target.value || 0 }))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
-              />
+              <label className="block text-xs font-medium text-[#64748B] mb-1.5">Tarifa ($ / hora)</label>
+              <div className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] bg-slate-50 text-[#64748B] cursor-not-allowed">
+                ${form.rate}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] mt-1">Tarifa fija según el servicio</p>
             </div>
 
             <div className="pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-sm">
@@ -295,7 +315,7 @@ export default function Costos() {
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} contentStyle={{ fontSize: 12 }} />
+                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ fontSize: 12 }} />
                 <Legend formatter={(v) => <span className="text-xs">{v}</span>} />
               </PieChart>
             </ResponsiveContainer>
