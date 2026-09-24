@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { readStorage, writeStorage } from '../utils/storage';
 import {
   NotificationContext,
   type AppNotification,
@@ -7,10 +8,29 @@ import {
 } from './notificationContextValue';
 
 const MAX_NOTIFICATIONS = 50;
+const NOTIFICATION_TYPES = ['info', 'success', 'warning', 'error'];
+
+const isNotificationList = (v: unknown): v is AppNotification[] =>
+  Array.isArray(v) &&
+  v.every(
+    (n) =>
+      typeof n === 'object' &&
+      n !== null &&
+      typeof n.id === 'string' &&
+      NOTIFICATION_TYPES.includes(n.type) &&
+      typeof n.title === 'string' &&
+      typeof n.createdAt === 'number' &&
+      typeof n.read === 'boolean'
+  );
+
+/** Las alertas automáticas de región (clave "alert:…") no se guardan: se regeneran al abrir la app. */
+const isAutoAlert = (n: AppNotification) => n.key?.startsWith('alert:') ?? false;
 const MAX_TOASTS = 4;
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
+    readStorage('notifications', [], isNotificationList)
+  );
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counter = useRef(0);
 
@@ -41,6 +61,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setToasts((prev) => [...prev, { id, type, title: input.title, message: input.message }].slice(-MAX_TOASTS));
     }
   }, []);
+
+  useEffect(() => {
+    writeStorage('notifications', notifications.filter((n) => !isAutoAlert(n)));
+  }, [notifications]);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));

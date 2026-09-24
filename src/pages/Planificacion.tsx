@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { regionLabel as fmtRegion } from '../data/regionData';
 import { Cloud, Check, Server, Database, HardDrive, Globe2, Shield, FolderClock, Plus } from 'lucide-react';
 
@@ -25,6 +26,23 @@ interface Proposal {
   createdAt: string;
 }
 
+const isProposalList = (v: unknown): v is Proposal[] =>
+  Array.isArray(v) &&
+  v.every(
+    (p) =>
+      typeof p === 'object' &&
+      p !== null &&
+      typeof p.id === 'number' &&
+      typeof p.name === 'string' &&
+      typeof p.type === 'string' &&
+      typeof p.region === 'string' &&
+      typeof p.users === 'string' &&
+      typeof p.availability === 'string' &&
+      typeof p.migration === 'string' &&
+      typeof p.createdAt === 'string' &&
+      Array.isArray(p.selected)
+  );
+
 export default function Planificacion() {
   const { regionId, regions } = useRegion();
   const { notify } = useNotifications();
@@ -41,8 +59,12 @@ export default function Planificacion() {
     selected: ['ec2', 'rds', 's3', 'cloudfront', 'route53'],
   });
   const [saved, setSaved] = useState(false);
-  const [savedProposals, setSavedProposals] = useState<Proposal[]>([]);
-  const [selectedProposalId, setSelectedProposalId] = useState<number | null>(null);
+  const [savedProposals, setSavedProposals] = usePersistentState<Proposal[]>('proposals', [], isProposalList);
+  const [selectedProposalId, setSelectedProposalId] = usePersistentState<number | null>(
+    'proposal-selected',
+    null,
+    (v): v is number | null => v === null || typeof v === 'number'
+  );
 
   const toggleService = (id: string) => {
     setForm((prev) => ({

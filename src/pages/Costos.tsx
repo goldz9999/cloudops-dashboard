@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type SetStateAction } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { DollarSign, TrendingUp, Server, Plus, Trash2 } from 'lucide-react';
 import {
   PieChart,
@@ -16,6 +17,8 @@ import {
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
 import { regionLabel, type CostRow } from '../data/regionData';
+import ExportMenu from '../components/ExportMenu';
+import { buildCostReport } from '../utils/reportBuilders';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];
 
@@ -71,9 +74,27 @@ export default function Costos() {
   return <CostosContent key={region.id} initialData={region.costTable} regionText={`${region.id} — ${regionLabel(region)}`} />;
 }
 
+const isCostRow = (r: unknown): r is CostRow =>
+  typeof r === 'object' &&
+  r !== null &&
+  ['id', 'quantity', 'hours', 'rate', 'monthly'].every((k) => typeof (r as Record<string, unknown>)[k] === 'number') &&
+  typeof (r as Record<string, unknown>).service === 'string';
+
+const isRowsByRegion = (v: unknown): v is Record<string, CostRow[]> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((rows) => Array.isArray(rows) && rows.every(isCostRow));
+
 function CostosContent({ initialData, regionText }: { initialData: CostRow[]; regionText: string }) {
-  const [rows, setRows] = useState<CostRow[]>(initialData);
   const { notify } = useNotifications();
+  const { region } = useRegion();
+
+  // Las ediciones de la tabla se guardan por región; si no hay ediciones, se usan los datos base.
+  const [storedRows, setStoredRows] = usePersistentState<Record<string, CostRow[]>>('costos-rows', {}, isRowsByRegion);
+  const rows = storedRows[region.id] ?? initialData;
+  const setRows = (update: SetStateAction<CostRow[]>) =>
+    setStoredRows((prev) => {
+      const current = prev[region.id] ?? initialData;
+      return { ...prev, [region.id]: typeof update === 'function' ? update(current) : update };
+    });
 
   const [form, setForm] = useState({
     service: 'EC2',
@@ -160,12 +181,15 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-main">Costos</h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          Análisis financiero y calculadora de costos de la infraestructura Cloud en{' '}
-          <span className="font-medium text-text-main">{regionText}</span>
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-text-main">Costos</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Análisis financiero y calculadora de costos de la infraestructura Cloud en{' '}
+            <span className="font-medium text-text-main">{regionText}</span>
+          </p>
+        </div>
+        <ExportMenu getReport={() => buildCostReport(region, rows)} />
       </div>
 
       {/* KPIs */}

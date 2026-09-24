@@ -16,7 +16,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="relative flex items-start gap-3 w-full bg-card border border-border rounded-lg shadow-lg pl-4 pr-3 py-3 overflow-hidden pointer-events-auto">
+    <div className="relative flex items-start gap-3 w-full bg-card border border-border rounded-lg shadow-lg pl-4 pr-3 py-3 overflow-hidden pointer-events-auto animate-toast-in">
       <span className={`absolute left-0 inset-y-0 w-1 ${style.bar}`} />
       <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${style.text}`} />
       <div className="min-w-0 flex-1">

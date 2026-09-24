@@ -22,6 +22,8 @@ import { services } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import RegionSelector from '../components/RegionSelector';
 import InteractiveChart from '../components/InteractiveChart';
+import ExportMenu from '../components/ExportMenu';
+import { buildDashboardReport } from '../utils/reportBuilders';
 import { regionLabel, regionStatusLabel, type HealthStatus } from '../data/regionData';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];
@@ -86,6 +88,7 @@ export default function Dashboard() {
           <span className="px-2.5 py-1 rounded-md bg-card border border-border">
             Actualizado: {now}
           </span>
+          <ExportMenu getReport={() => buildDashboardReport(region, summary)} />
         </div>
       </div>
 
@@ -180,6 +183,7 @@ export default function Dashboard() {
                   stroke="#16A34A"
                   strokeWidth="3"
                   strokeDasharray={`${kpiData.securityScore}, 100`}
+                  className="transition-[stroke-dasharray] duration-700 ease-out"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">

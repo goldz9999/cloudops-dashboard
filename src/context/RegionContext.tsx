@@ -1,9 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { RegionContext } from './regionContextValue';
 import { DEFAULT_REGION_ID, regionsData, summarizeRegion } from '../data/regionData';
 
+const isRegionId = (v: unknown): v is string => typeof v === 'string' && regionsData.some((r) => r.id === v);
+
 export function RegionProvider({ children }: { children: ReactNode }) {
-  const [regionId, setRegionId] = useState(DEFAULT_REGION_ID);
+  const [regionId, setRegionId] = usePersistentState<string>('region', DEFAULT_REGION_ID, isRegionId);
   const [isRegionsModalOpen, setModalOpen] = useState(false);
 
   const value = useMemo(() => {
@@ -18,7 +21,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
       openRegionsModal: () => setModalOpen(true),
       closeRegionsModal: () => setModalOpen(false),
     };
-  }, [regionId, isRegionsModalOpen]);
+  }, [regionId, setRegionId, isRegionsModalOpen]);
 
   return <RegionContext.Provider value={value}>{children}</RegionContext.Provider>;
 }

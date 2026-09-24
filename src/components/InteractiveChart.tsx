@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Area,
   AreaChart,
@@ -87,7 +88,7 @@ function ChartTooltip({ active, payload, label, mode, total = 0 }: TipProps) {
 
 export default function InteractiveChart() {
   const { region, summary } = useRegion();
-  const [tab, setTab] = useState<Tab>('trend');
+  const [tab, setTab] = usePersistentState<Tab>('chart-tab', 'trend', (v): v is Tab => TABS.some((t) => t.id === v));
   const [hidden, setHidden] = useState<string[]>([]);
 
   const trend = buildCostTrend(region);

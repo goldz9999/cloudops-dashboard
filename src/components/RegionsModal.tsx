@@ -25,14 +25,14 @@ export default function RegionsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={closeRegionsModal}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="regions-modal-title"
-        className="bg-card rounded-xl border border-border shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+        className="bg-card rounded-xl border border-border shadow-xl animate-pop-in w-full max-w-3xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">

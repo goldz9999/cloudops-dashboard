@@ -14,6 +14,7 @@ import { services, serviceCategories } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
 import { filterServices, matchesSearch } from '../utils/filterServices';
+import { usePersistentState } from '../hooks/usePersistentState';
 import ServiceDetailModal from '../components/ServiceDetailModal';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -30,8 +31,12 @@ export default function Servicios() {
   const { region } = useRegion();
   const metrics = region.serviceMetrics;
   const isUp = (id: string) => metrics[id]?.status === 'in-use';
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<string>('Todos');
+  const [search, setSearch] = usePersistentState<string>('servicios-search', '', (v): v is string => typeof v === 'string');
+  const [category, setCategory] = usePersistentState<string>(
+    'servicios-category',
+    'Todos',
+    (v): v is string => typeof v === 'string' && (serviceCategories as readonly string[]).includes(v)
+  );
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   const filtered = filterServices(services, search, category);

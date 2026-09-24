@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -64,12 +64,26 @@ export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const currentTitle = pageTitles[location.pathname] || 'CloudOps';
 
+  // Al cambiar de región se re-lanza un fade suave sobre el contenido, sin remontar
+  // la página (así no se pierden filtros ni formularios).
+  const regionFadeRef = useRef<HTMLDivElement>(null);
+  const previousRegionId = useRef(region.id);
+  useEffect(() => {
+    if (previousRegionId.current === region.id) return;
+    previousRegionId.current = region.id;
+    const el = regionFadeRef.current;
+    if (!el) return;
+    el.classList.remove('animate-region-in');
+    el.getBoundingClientRect(); // fuerza el reflujo para reiniciar la animación
+    el.classList.add('animate-region-in');
+  }, [region.id]);
+
   return (
     <div className="flex h-screen bg-bg-main overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -213,7 +227,11 @@ export default function MainLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <Outlet />
+          <div key={location.pathname} className="animate-page-in">
+            <div ref={regionFadeRef}>
+              <Outlet />
+            </div>
+          </div>
         </main>
       </div>
       <RegionsModal />

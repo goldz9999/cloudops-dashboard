@@ -2,6 +2,8 @@ import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircl
 import { sharedResponsibility, iamCards } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
+import ExportMenu from '../components/ExportMenu';
+import { buildSecurityReport } from '../utils/reportBuilders';
 
 const statusIcon = {
   healthy: <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />,
@@ -20,14 +22,17 @@ export default function Seguridad() {
   const securityItems = { score: region.securityScore, ...region.security };
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-main">Seguridad</h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento en{' '}
-          <span className="font-medium text-text-main">
-            {region.id} — {regionLabel(region)}
-          </span>
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-text-main">Seguridad</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento en{' '}
+            <span className="font-medium text-text-main">
+              {region.id} — {regionLabel(region)}
+            </span>
+          </p>
+        </div>
+        <ExportMenu getReport={() => buildSecurityReport(region)} />
       </div>
 
       {/* Top summary */}

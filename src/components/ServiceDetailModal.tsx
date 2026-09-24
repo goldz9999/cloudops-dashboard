@@ -58,14 +58,14 @@ export default function ServiceDetailModal({ serviceId, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="service-detail-title"
-        className="bg-card rounded-xl border border-border shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col"
+        className="bg-card rounded-xl border border-border shadow-xl animate-pop-in w-full max-w-lg max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
