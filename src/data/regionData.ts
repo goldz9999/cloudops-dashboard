@@ -44,6 +44,11 @@ export interface RegionData {
   serviceMetrics: Record<string, ServiceMetric>;
   /** Nombres de los servicios en uso (derivado de serviceMetrics) */
   services: string[];
+  /**
+   * Factores de costo de los últimos 6 meses respecto al costo actual (el último valor
+   * debe ser 1 para que coincida exactamente con el costo mensual de la región).
+   */
+  costTrend: number[];
 }
 
 export interface RegionSummary {
@@ -95,6 +100,7 @@ const rawRegions: RawRegion[] = [
       route53: m('in-use', 2, 72),
       cloudfront: m('in-use', 2, 58),
     },
+    costTrend: [0.82, 0.86, 0.9, 0.94, 0.97, 1],
   },
   {
     id: 'us-west-2',
@@ -121,6 +127,7 @@ const rawRegions: RawRegion[] = [
       route53: m('in-use', 1, 55),
       cloudfront: m('available', 0, 0),
     },
+    costTrend: [0.9, 0.93, 0.95, 0.97, 0.99, 1],
   },
   {
     id: 'sa-east-1',
@@ -146,6 +153,7 @@ const rawRegions: RawRegion[] = [
       route53: m('available', 0, 0),
       cloudfront: m('available', 0, 0),
     },
+    costTrend: [0.85, 0.89, 0.92, 0.95, 0.98, 1],
   },
   {
     id: 'eu-west-1',
@@ -171,6 +179,7 @@ const rawRegions: RawRegion[] = [
       route53: m('available', 0, 0),
       cloudfront: m('in-use', 1, 77),
     },
+    costTrend: [1.22, 1.16, 1.11, 1.07, 1.03, 1],
   },
   {
     id: 'eu-central-1',
@@ -197,6 +206,7 @@ const rawRegions: RawRegion[] = [
       route53: m('available', 0, 0),
       cloudfront: m('in-use', 2, 64),
     },
+    costTrend: [0.88, 0.91, 0.94, 0.96, 0.98, 1],
   },
   {
     id: 'ap-southeast-1',
@@ -218,6 +228,7 @@ const rawRegions: RawRegion[] = [
       route53: m('available', 0, 0),
       cloudfront: m('available', 0, 0),
     },
+    costTrend: [0.8, 0.85, 0.89, 0.93, 0.97, 1],
   },
 ];
 

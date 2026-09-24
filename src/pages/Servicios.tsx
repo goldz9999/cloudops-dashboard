@@ -14,6 +14,7 @@ import { services, serviceCategories } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
 import { filterServices, matchesSearch } from '../utils/filterServices';
+import ServiceDetailModal from '../components/ServiceDetailModal';
 
 const iconMap: Record<string, React.ElementType> = {
   Server,
@@ -31,6 +32,7 @@ export default function Servicios() {
   const isUp = (id: string) => metrics[id]?.status === 'in-use';
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string>('Todos');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   const filtered = filterServices(services, search, category);
   const filtersActive = search.trim() !== '' || category !== 'Todos';
@@ -140,7 +142,13 @@ export default function Servicios() {
           return (
             <div
               key={svc.id}
-              className="bg-white rounded-xl border border-[#E2E8F0] p-5 hover:shadow-md transition-shadow flex flex-col"
+              onClick={() => setSelectedServiceId(svc.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setSelectedServiceId(svc.id);
+              }}
+              className="bg-white rounded-xl border border-[#E2E8F0] p-5 hover:shadow-md hover:border-slate-300 transition-shadow flex flex-col cursor-pointer text-left"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -186,6 +194,8 @@ export default function Servicios() {
           </button>
         </div>
       )}
+
+      <ServiceDetailModal serviceId={selectedServiceId} onClose={() => setSelectedServiceId(null)} />
     </div>
   );
 }

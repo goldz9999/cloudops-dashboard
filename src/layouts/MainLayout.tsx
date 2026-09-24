@@ -13,10 +13,13 @@ import {
   Bell,
   ChevronRight,
   CloudCog,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import RegionSelector from '../components/RegionSelector';
 import RegionsModal from '../components/RegionsModal';
 import { useRegion } from '../context/useRegion';
+import { useTheme } from '../context/useTheme';
 import { regionStatusLabel } from '../data/regionData';
 
 const navSections = [
@@ -58,10 +61,11 @@ export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { region } = useRegion();
+  const { theme, toggleTheme } = useTheme();
   const currentTitle = pageTitles[location.pathname] || 'CloudOps';
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
+    <div className="flex h-screen bg-bg-main overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -74,14 +78,14 @@ export default function MainLayout() {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-64 bg-[#0F172A] text-white flex flex-col
+          w-64 bg-sidebar text-white flex flex-col
           transform transition-transform duration-200 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-700/50">
-          <div className="w-9 h-9 rounded-lg bg-[#2563EB] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
             <CloudCog className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -115,7 +119,7 @@ export default function MainLayout() {
                         className={({ isActive }) =>
                           `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                             isActive
-                              ? 'bg-[#2563EB] text-white'
+                              ? 'bg-primary text-white'
                               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                           }`
                         }
@@ -134,7 +138,7 @@ export default function MainLayout() {
         {/* Footer */}
         <div className="px-4 py-3 border-t border-slate-700/50">
           <div className="flex items-center gap-2 text-xs text-slate-400">
-            <div className="w-2 h-2 rounded-full bg-[#16A34A]" />
+            <div className="w-2 h-2 rounded-full bg-security" />
             <span>Sistema operativo</span>
           </div>
         </div>
@@ -143,55 +147,68 @@ export default function MainLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-14 bg-white border-b border-[#E2E8F0] flex items-center px-4 lg:px-6 gap-4 shrink-0">
+        <header className="h-14 bg-card border-b border-border flex items-center px-4 lg:px-6 gap-4 shrink-0">
           <button
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
+            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu className="w-5 h-5 text-[#1E293B]" />
+            <Menu className="w-5 h-5 text-text-main" />
           </button>
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm min-w-0">
-            <span className="text-[#64748B] hidden sm:inline">CloudOps</span>
-            <ChevronRight className="w-3.5 h-3.5 text-[#64748B] hidden sm:inline" />
-            <span className="font-medium text-[#1E293B] truncate">{currentTitle}</span>
+            <span className="text-text-secondary hidden sm:inline">CloudOps</span>
+            <ChevronRight className="w-3.5 h-3.5 text-text-secondary hidden sm:inline" />
+            <span className="font-medium text-text-main truncate">{currentTitle}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-3">
             {/* Region indicator */}
-            <div className="hidden md:flex items-center px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs max-w-[340px]">
+            <div className="hidden md:flex items-center px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-border text-xs max-w-[340px]">
               <RegionSelector compact />
             </div>
 
             {/* Status */}
             <div
               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
-                region.status === 'operational' ? 'bg-green-50' : region.status === 'review' ? 'bg-amber-50' : 'bg-red-50'
+                region.status === 'operational'
+                  ? 'bg-green-50 dark:bg-green-500/10'
+                  : region.status === 'review'
+                    ? 'bg-amber-50 dark:bg-amber-500/10'
+                    : 'bg-red-50 dark:bg-red-500/10'
               }`}
             >
               <div
                 className={`w-1.5 h-1.5 rounded-full ${
-                  region.status === 'operational' ? 'bg-[#16A34A]' : region.status === 'review' ? 'bg-[#F59E0B]' : 'bg-[#DC2626]'
+                  region.status === 'operational' ? 'bg-security' : region.status === 'review' ? 'bg-costs' : 'bg-alerts'
                 }`}
               />
               <span
                 className={`font-medium ${
-                  region.status === 'operational' ? 'text-[#16A34A]' : region.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'
+                  region.status === 'operational' ? 'text-security' : region.status === 'review' ? 'text-costs' : 'text-alerts'
                 }`}
               >
                 {regionStatusLabel[region.status]}
               </span>
             </div>
 
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-text-secondary"
+            >
+              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-slate-100">
-              <Bell className="w-5 h-5 text-[#64748B]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#DC2626]" />
+            <button className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              <Bell className="w-5 h-5 text-text-secondary" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-alerts" />
             </button>
 
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full bg-[#2563EB] flex items-center justify-center text-white text-xs font-semibold">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">
               CO
             </div>
           </div>

@@ -8,9 +8,11 @@ import Seguridad from './pages/Seguridad';
 import ArquitecturaRed from './pages/ArquitecturaRed';
 import Servicios from './pages/Servicios';
 import { RegionProvider } from './context/RegionContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
   return (
+    <ThemeProvider>
     <RegionProvider>
     <BrowserRouter>
       <Routes>
@@ -26,5 +28,6 @@ export default function App() {
       </Routes>
     </BrowserRouter>
     </RegionProvider>
+    </ThemeProvider>
   );
 }
