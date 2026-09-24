@@ -1,124 +1,77 @@
-export const kpiData = {
-  servicesUsed: 7,
-  cloudResources: 18,
-  monthlyCost: 342.5,
-  annualCost: 4110,
-  securityScore: 92,
-  availability: 99.9,
-};
-
-export const costDistribution = [
-  { name: 'EC2', value: 154.13, percentage: 45 },
-  { name: 'RDS', value: 102.75, percentage: 30 },
-  { name: 'S3', value: 41.1, percentage: 12 },
-  { name: 'CloudFront', value: 27.4, percentage: 8 },
-  { name: 'Route 53', value: 17.12, percentage: 5 },
-];
-
-export const regions = [
-  {
-    id: 'us-east-1',
-    name: 'US East',
-    location: 'N. Virginia',
-    status: 'operational' as const,
-    services: ['EC2', 'S3', 'RDS', 'CloudFront', 'Route 53'],
-  },
-  {
-    id: 'sa-east-1',
-    name: 'South America',
-    location: 'São Paulo',
-    status: 'operational' as const,
-    services: ['EC2', 'S3', 'RDS'],
-  },
-  {
-    id: 'eu-west-1',
-    name: 'Europe',
-    location: 'Ireland',
-    status: 'review' as const,
-    services: ['EC2', 'S3', 'CloudFront'],
-  },
-  {
-    id: 'ap-southeast-1',
-    name: 'Asia Pacific',
-    location: 'Singapore',
-    status: 'operational' as const,
-    services: ['EC2', 'S3'],
-  },
-];
-
 export const services = [
   {
     id: 'ec2',
     name: 'EC2',
-    category: 'Compute',
-    description: 'Virtual servers in the cloud. Run applications with scalable compute capacity.',
-    mainFunction: 'Run applications',
+    category: 'Cómputo',
+    description: 'Servidores virtuales en la nube. Ejecuta aplicaciones con capacidad de cómputo escalable.',
+    mainFunction: 'Ejecutar aplicaciones',
     status: 'in-use' as const,
     icon: 'Server',
   },
   {
     id: 's3',
     name: 'S3',
-    category: 'Storage',
-    description: 'Object storage built to store and retrieve any amount of data from anywhere.',
-    mainFunction: 'Store objects',
+    category: 'Almacenamiento',
+    description: 'Almacenamiento de objetos diseñado para guardar y recuperar cualquier cantidad de datos desde cualquier lugar.',
+    mainFunction: 'Almacenar objetos',
     status: 'in-use' as const,
     icon: 'HardDrive',
   },
   {
     id: 'rds',
     name: 'RDS',
-    category: 'Database',
-    description: 'Managed relational database service for MySQL, PostgreSQL, and more.',
-    mainFunction: 'Managed databases',
+    category: 'Bases de datos',
+    description: 'Servicio de bases de datos relacionales administradas para MySQL, PostgreSQL y más.',
+    mainFunction: 'Bases de datos administradas',
     status: 'in-use' as const,
     icon: 'Database',
   },
   {
     id: 'iam',
     name: 'IAM',
-    category: 'Security',
-    description: 'Identity and Access Management. Securely control access to AWS services.',
-    mainFunction: 'Access control',
+    category: 'Seguridad',
+    description: 'Gestión de identidades y accesos. Controla de forma segura el acceso a los servicios de AWS.',
+    mainFunction: 'Control de acceso',
     status: 'in-use' as const,
     icon: 'Shield',
   },
   {
     id: 'vpc',
     name: 'VPC',
-    category: 'Networking',
-    description: 'Isolated cloud resources in a virtual private network.',
-    mainFunction: 'Network isolation',
+    category: 'Redes',
+    description: 'Recursos en la nube aislados dentro de una red virtual privada.',
+    mainFunction: 'Aislamiento de red',
     status: 'in-use' as const,
     icon: 'Network',
   },
   {
     id: 'route53',
     name: 'Route 53',
-    category: 'Networking',
-    description: 'Scalable Domain Name System (DNS) web service.',
-    mainFunction: 'DNS routing',
+    category: 'Redes',
+    description: 'Servicio web escalable del Sistema de Nombres de Dominio (DNS).',
+    mainFunction: 'Enrutamiento DNS',
     status: 'in-use' as const,
     icon: 'Globe',
   },
   {
     id: 'cloudfront',
     name: 'CloudFront',
-    category: 'Networking',
-    description: 'Fast content delivery network (CDN) service.',
-    mainFunction: 'Content delivery',
+    category: 'Redes',
+    description: 'Servicio de red de entrega de contenido (CDN) rápido.',
+    mainFunction: 'Entrega de contenido',
     status: 'available' as const,
     icon: 'Cloud',
   },
 ];
 
-export const securityItems = {
-  score: 92,
-  iam: 'healthy' as const,
-  dataProtection: 'healthy' as const,
-  accountProtection: 'review' as const,
-  compliance: 'healthy' as const,
-};
+export const serviceCategories = [
+  'Todos',
+  'Cómputo',
+  'Almacenamiento',
+  'Bases de datos',
+  'Redes',
+  'Seguridad',
+] as const;
 
 export const sharedResponsibility = {
   aws: [
@@ -147,19 +100,11 @@ export const iamCards = [
   { title: 'Mínimo privilegio', value: 'Parcial', status: 'review' as const, description: 'Revisar roles con exceso de permisos' },
 ];
 
-export const costTableData = [
-  { id: 1, service: 'EC2', quantity: 4, hours: 730, rate: 0.0528, monthly: 154.13 },
-  { id: 2, service: 'RDS', quantity: 2, hours: 730, rate: 0.0704, monthly: 102.75 },
-  { id: 3, service: 'S3', quantity: 500, hours: 1, rate: 0.023, monthly: 41.1 },
-  { id: 4, service: 'CloudFront', quantity: 1000, hours: 1, rate: 0.0274, monthly: 27.4 },
-  { id: 5, service: 'Route 53', quantity: 1, hours: 1, rate: 17.12, monthly: 17.12 },
-];
-
 export const networkComponents = [
-  { name: 'Internet', description: 'Public internet traffic entry point' },
-  { name: 'Route 53', description: 'DNS resolution and traffic routing' },
-  { name: 'CloudFront', description: 'CDN for low-latency content delivery' },
-  { name: 'VPC', description: 'Isolated virtual network for resources' },
-  { name: 'EC2', description: 'Compute instances running applications' },
-  { name: 'RDS', description: 'Managed relational database' },
+  { name: 'Internet', description: 'Punto de entrada del tráfico público de internet' },
+  { name: 'Route 53', description: 'Resolución DNS y enrutamiento de tráfico' },
+  { name: 'CloudFront', description: 'CDN para entrega de contenido con baja latencia' },
+  { name: 'VPC', description: 'Red virtual aislada para los recursos' },
+  { name: 'EC2', description: 'Instancias de cómputo que ejecutan las aplicaciones' },
+  { name: 'RDS', description: 'Base de datos relacional administrada' },
 ];

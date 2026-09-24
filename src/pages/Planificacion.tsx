@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useRegion } from '../context/useRegion';
+import { regionLabel as fmtRegion } from '../data/regionData';
 import { Cloud, Check, Server, Database, HardDrive, Globe2, Shield, FolderClock, Plus } from 'lucide-react';
 
 const availableServices = [
@@ -9,13 +11,6 @@ const availableServices = [
   { id: 'route53', name: 'Route 53', icon: Globe2 },
   { id: 'iam', name: 'IAM', icon: Shield },
 ];
-
-const regionLabels: Record<string, string> = {
-  'us-east-1': 'US East (N. Virginia)',
-  'sa-east-1': 'Sudamérica (São Paulo)',
-  'eu-west-1': 'Europa (Irlanda)',
-  'ap-southeast-1': 'Asia Pacífico (Singapur)',
-};
 
 interface Proposal {
   id: number;
@@ -30,12 +25,14 @@ interface Proposal {
 }
 
 export default function Planificacion() {
+  const { regionId, regions } = useRegion();
+  const regionLabels: Record<string, string> = Object.fromEntries(regions.map((r) => [r.id, fmtRegion(r)]));
   const [form, setForm] = useState({
     name: 'Aplicación Web Empresarial',
     type: 'Aplicación Web SaaS',
     description:
       'Aplicación web empresarial de alta disponibilidad con base de datos gestionada y CDN global.',
-    region: 'us-east-1',
+    region: regionId,
     users: '5000',
     availability: 'Alta',
     migration: 'Escalabilidad y Reducción de Costos',
@@ -141,7 +138,7 @@ export default function Planificacion() {
                 <option>E-commerce / Tienda Online</option>
                 <option>Sistema Empresarial (ERP/CRM)</option>
                 <option>Aplicación Web SaaS</option>
-                <option>Big Data & Analytics</option>
+                <option>Big Data y Analítica</option>
                 <option>API y Backend Móvil</option>
               </select>
             </div>
@@ -153,10 +150,11 @@ export default function Planificacion() {
                 onChange={(e) => handleChange('region', e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30"
               >
-                <option value="us-east-1">US East (N. Virginia)</option>
-                <option value="sa-east-1">Sudamérica (São Paulo)</option>
-                <option value="eu-west-1">Europa (Irlanda)</option>
-                <option value="ap-southeast-1">Asia Pacífico (Singapur)</option>
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {fmtRegion(r)}
+                  </option>
+                ))}
               </select>
             </div>
 

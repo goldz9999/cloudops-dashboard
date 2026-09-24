@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Globe2, Server, CheckCircle2, AlertTriangle, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
-import { regions } from '../data/mockData';
+import { useRegion } from '../context/useRegion';
 import { WORLD_MAP_VIEWBOX, WORLD_MAP_PATHS, geoToMapXY } from '../data/worldMapData';
 
 const statusConfig = {
@@ -30,21 +30,28 @@ const statusConfig = {
   },
 };
 
-// Coordenadas geográficas reales (lat, lon) de cada región
-const mapMarkers = [
-  { id: 'us-east-1', lat: 38.9, lon: -77.5, name: 'US East', location: 'N. Virginia' },
-  { id: 'sa-east-1', lat: -23.5, lon: -46.6, name: 'South America', location: 'São Paulo' },
-  { id: 'eu-west-1', lat: 53.3, lon: -8.0, name: 'Europe', location: 'Ireland' },
-  { id: 'ap-southeast-1', lat: 1.35, lon: 103.8, name: 'Asia Pacific', location: 'Singapore' },
-].map((m) => ({ ...m, ...geoToMapXY(m.lat, m.lon) }));
-
 const { minX, minY, width, height } = WORLD_MAP_VIEWBOX;
 const VIEWBOX = `${minX} ${minY} ${width} ${height}`;
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 
+// Pares de regiones conectadas con arcos en el mapa
+const MAP_ARCS: [string, string][] = [
+  ['us-east-1', 'us-west-2'],
+  ['us-east-1', 'sa-east-1'],
+  ['us-east-1', 'eu-west-1'],
+  ['eu-west-1', 'eu-central-1'],
+  ['eu-central-1', 'ap-southeast-1'],
+  ['us-west-2', 'ap-southeast-1'],
+];
+
 export default function Infraestructura() {
+  const { regions, regionId, setRegionId } = useRegion();
+  const mapMarkers = useMemo(
+    () => regions.map((r) => ({ id: r.id, name: r.name, location: r.location, ...geoToMapXY(r.lat, r.lon) })),
+    [regions]
+  );
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -231,12 +238,12 @@ export default function Infraestructura() {
                 />
 
                 {/* Líneas de conexión entre regiones (arcos suaves) */}
-                {[
-                  [mapMarkers[0], mapMarkers[1]],
-                  [mapMarkers[0], mapMarkers[2]],
-                  [mapMarkers[2], mapMarkers[3]],
-                  [mapMarkers[1], mapMarkers[3]],
-                ].map(([a, b], i) => {
+                {MAP_ARCS.map(([idA, idB]) => [
+                  mapMarkers.find((mk) => mk.id === idA),
+                  mapMarkers.find((mk) => mk.id === idB),
+                ])
+                  .filter((pair): pair is [(typeof mapMarkers)[number], (typeof mapMarkers)[number]] => !!pair[0] && !!pair[1])
+                  .map(([a, b], i) => {
                   const midX = (a.x + b.x) / 2;
                   const midY = (a.y + b.y) / 2 - height * 0.06;
                   return (
@@ -258,7 +265,16 @@ export default function Infraestructura() {
                   const cfg = statusConfig[status];
                   const r = width * 0.006;
                   return (
-                    <g key={m.id}>
+                    <g
+                      key={m.id}
+                      onClick={() => setRegionId(m.id)}
+                      style={{ cursor: 'pointer' }}
+                      role="button"
+                      aria-label={`Seleccionar región ${m.name} ${m.location}`}
+                    >
+                      {m.id === regionId && (
+                        <circle cx={m.x} cy={m.y} r={r * 3.4} fill="none" stroke="#FFFFFF" strokeWidth={width * 0.0016} />
+                      )}
                       <circle cx={m.x} cy={m.y} r={r * 2.5} fill={cfg.pin} opacity="0.15">
                         <animate attributeName="r" values={`${r * 1.8};${r * 3.2};${r * 1.8}`} dur="2.4s" repeatCount="indefinite" />
                         <animate attributeName="opacity" values="0.3;0.05;0.3" dur="2.4s" repeatCount="indefinite" />
@@ -313,7 +329,7 @@ export default function Infraestructura() {
             return (
               <div
                 key={region.id}
-                className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}
+                className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border} ${region.id === regionId ? 'ring-2 ring-[#2563EB]' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -323,9 +339,21 @@ export default function Infraestructura() {
                       <p className="text-[11px] text-[#64748B]">{region.location}</p>
                     </div>
                   </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
-                    {cfg.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
+                      {cfg.label}
+                    </span>
+                    {region.id === regionId ? (
+                      <span className="text-[10px] font-semibold text-[#2563EB]">Región actual</span>
+                    ) : (
+                      <button
+                        onClick={() => setRegionId(region.id)}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#2563EB] text-white hover:bg-blue-700"
+                      >
+                        Seleccionar
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {region.services.map((svc) => (

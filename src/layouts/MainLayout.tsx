@@ -14,6 +14,10 @@ import {
   ChevronRight,
   CloudCog,
 } from 'lucide-react';
+import RegionSelector from '../components/RegionSelector';
+import RegionsModal from '../components/RegionsModal';
+import { useRegion } from '../context/useRegion';
+import { regionStatusLabel } from '../data/regionData';
 
 const navSections = [
   {
@@ -53,6 +57,7 @@ const pageTitles: Record<string, string> = {
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { region } = useRegion();
   const currentTitle = pageTitles[location.pathname] || 'CloudOps';
 
   return (
@@ -81,7 +86,7 @@ export default function MainLayout() {
           </div>
           <div>
             <h1 className="font-semibold text-sm tracking-tight">CloudOps Dashboard</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Enterprise Cloud</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Nube empresarial</p>
           </div>
           <button
             className="ml-auto lg:hidden p-1 rounded hover:bg-slate-700"
@@ -155,16 +160,28 @@ export default function MainLayout() {
 
           <div className="ml-auto flex items-center gap-3">
             {/* Region indicator */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs">
-              <Globe2 className="w-3.5 h-3.5 text-[#2563EB]" />
-              <span className="text-[#64748B]">Región:</span>
-              <span className="font-medium text-[#1E293B]">US East (N. Virginia)</span>
+            <div className="hidden md:flex items-center px-3 py-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-xs max-w-[340px]">
+              <RegionSelector compact />
             </div>
 
             {/* Status */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-xs">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-              <span className="text-[#16A34A] font-medium">Healthy</span>
+            <div
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
+                region.status === 'operational' ? 'bg-green-50' : region.status === 'review' ? 'bg-amber-50' : 'bg-red-50'
+              }`}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${
+                  region.status === 'operational' ? 'bg-[#16A34A]' : region.status === 'review' ? 'bg-[#F59E0B]' : 'bg-[#DC2626]'
+                }`}
+              />
+              <span
+                className={`font-medium ${
+                  region.status === 'operational' ? 'text-[#16A34A]' : region.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'
+                }`}
+              >
+                {regionStatusLabel[region.status]}
+              </span>
             </div>
 
             {/* Notifications */}
@@ -185,6 +202,7 @@ export default function MainLayout() {
           <Outlet />
         </main>
       </div>
+      <RegionsModal />
     </div>
   );
 }

@@ -7,9 +7,11 @@ import Infraestructura from './pages/Infraestructura';
 import Seguridad from './pages/Seguridad';
 import ArquitecturaRed from './pages/ArquitecturaRed';
 import Servicios from './pages/Servicios';
+import { RegionProvider } from './context/RegionContext';
 
 export default function App() {
   return (
+    <RegionProvider>
     <BrowserRouter>
       <Routes>
         <Route element={<MainLayout />}>
@@ -23,5 +25,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </RegionProvider>
   );
 }

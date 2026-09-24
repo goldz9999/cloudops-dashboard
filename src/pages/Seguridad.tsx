@@ -1,5 +1,7 @@
 import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
-import { securityItems, sharedResponsibility, iamCards } from '../data/mockData';
+import { sharedResponsibility, iamCards } from '../data/mockData';
+import { useRegion } from '../context/useRegion';
+import { regionLabel } from '../data/regionData';
 
 const statusIcon = {
   healthy: <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />,
@@ -14,12 +16,17 @@ const statusBadge = {
 };
 
 export default function Seguridad() {
+  const { region } = useRegion();
+  const securityItems = { score: region.securityScore, ...region.security };
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-[#1E293B]">Seguridad</h1>
         <p className="text-sm text-[#64748B] mt-0.5">
-          Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento
+          Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento en{' '}
+          <span className="font-medium text-[#1E293B]">
+            {region.id} — {regionLabel(region)}
+          </span>
         </p>
       </div>
 

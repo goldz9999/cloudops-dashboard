@@ -13,7 +13,8 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
-import { costTableData as initialData, costDistribution } from '../data/mockData';
+import { useRegion } from '../context/useRegion';
+import { regionLabel, type CostRow } from '../data/regionData';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];
 
@@ -26,15 +27,6 @@ const SERVICE_OPTIONS = [
   { name: 'IAM', rate: 0, hours: 1 },
   { name: 'VPC', rate: 0, hours: 1 },
 ];
-
-interface CostRow {
-  id: number;
-  service: string;
-  quantity: number;
-  hours: number;
-  rate: number;
-  monthly: number;
-}
 
 
 interface NumInputProps {
@@ -72,7 +64,13 @@ function NumInput({ value, onChange, min = 0, className }: NumInputProps) {
   );
 }
 
+// Al cambiar de región se vuelve a montar con los costos de esa región (key)
 export default function Costos() {
+  const { region } = useRegion();
+  return <CostosContent key={region.id} initialData={region.costTable} regionText={`${region.id} — ${regionLabel(region)}`} />;
+}
+
+function CostosContent({ initialData, regionText }: { initialData: CostRow[]; regionText: string }) {
   const [rows, setRows] = useState<CostRow[]>(initialData);
 
   const [form, setForm] = useState({
@@ -131,6 +129,18 @@ export default function Costos() {
     setRows((prev) => prev.filter((r) => r.id !== id));
   };
 
+  // La distribución sale de las filas actuales (se actualiza al editar la tabla)
+  const costByService = Object.values(
+    rows.reduce<Record<string, { name: string; value: number }>>((acc, r) => {
+      acc[r.service] = { name: r.service, value: +((acc[r.service]?.value ?? 0) + r.monthly).toFixed(2) };
+      return acc;
+    }, {})
+  );
+  const costDistribution = costByService.map((c) => ({
+    ...c,
+    percentage: totalMonthly ? Math.round((c.value / totalMonthly) * 100) : 0,
+  }));
+
   const barData = rows.map((r) => ({
     name: r.service,
     monthly: r.monthly,
@@ -144,7 +154,8 @@ export default function Costos() {
       <div>
         <h1 className="text-xl font-semibold text-[#1E293B]">Costos</h1>
         <p className="text-sm text-[#64748B] mt-0.5">
-          Análisis financiero y calculadora de costos de la infraestructura Cloud
+          Análisis financiero y calculadora de costos de la infraestructura Cloud en{' '}
+          <span className="font-medium text-[#1E293B]">{regionText}</span>
         </p>
       </div>
 

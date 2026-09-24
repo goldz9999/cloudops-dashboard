@@ -18,7 +18,10 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { kpiData, costDistribution, regions, services } from '../data/mockData';
+import { services } from '../data/mockData';
+import { useRegion } from '../context/useRegion';
+import RegionSelector from '../components/RegionSelector';
+import { regionLabel, regionStatusLabel, type HealthStatus } from '../data/regionData';
 
 const COLORS = ['#2563EB', '#F59E0B', '#16A34A', '#8B5CF6', '#64748B'];
 
@@ -28,7 +31,32 @@ const statusColor = {
   issue: 'bg-[#DC2626]',
 };
 
+const healthText: Record<HealthStatus, string> = { healthy: 'Saludable', review: 'Revisar', issue: 'Problema' };
+const healthColor: Record<HealthStatus, string> = {
+  healthy: 'text-[#16A34A]',
+  review: 'text-[#F59E0B]',
+  issue: 'text-[#DC2626]',
+};
+const statusBadgeCls = {
+  operational: 'bg-green-50 text-[#16A34A] border-green-100',
+  review: 'bg-amber-50 text-[#F59E0B] border-amber-100',
+  issue: 'bg-red-50 text-[#DC2626] border-red-100',
+};
+
 export default function Dashboard() {
+  const { region, summary, regions, setRegionId, openRegionsModal } = useRegion();
+  const kpiData = {
+    servicesUsed: summary.servicesUsed,
+    cloudResources: summary.cloudResources,
+    monthlyCost: summary.monthlyCost,
+    annualCost: summary.annualCost,
+    securityScore: region.securityScore,
+    availability: region.availability,
+  };
+  const costDistribution = summary.costDistribution;
+  const metrics = region.serviceMetrics;
+  const isUp = (id: string) => metrics[id]?.status === 'in-use';
+  const otherRegions = [region, ...regions.filter((r) => r.id !== region.id)].slice(0, 3);
   const now = new Date().toLocaleString('es-ES', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -39,17 +67,20 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[#1E293B]">Cloud Infrastructure Overview</h1>
+          <h1 className="text-xl font-semibold text-[#1E293B]">Resumen de la Infraestructura Cloud</h1>
           <p className="text-sm text-[#64748B] mt-0.5">
-            Resumen completo de la infraestructura Cloud planificada y desplegada
+            Resumen completo de la infraestructura Cloud planificada y desplegada en{' '}
+            <span className="font-medium text-[#1E293B]">
+              {region.id} — {regionLabel(region)}
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[#64748B]">
-          <span className="px-2.5 py-1 rounded-md bg-white border border-[#E2E8F0]">
-            Región: US East
+          <span className="px-2.5 py-1 rounded-md bg-white border border-[#E2E8F0] max-w-full">
+            <RegionSelector />
           </span>
-          <span className="px-2.5 py-1 rounded-md bg-green-50 text-[#16A34A] font-medium border border-green-100">
-            Estado: Operativo
+          <span className={`px-2.5 py-1 rounded-md font-medium border ${statusBadgeCls[region.status]}`}>
+            Estado: {regionStatusLabel[region.status]}
           </span>
           <span className="px-2.5 py-1 rounded-md bg-white border border-[#E2E8F0]">
             Actualizado: {now}
@@ -155,10 +186,14 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2.5">
             {[
-              { label: 'IAM', status: 'Healthy', color: 'text-[#16A34A]' },
-              { label: 'MFA', status: 'Enabled', color: 'text-[#16A34A]' },
-              { label: 'Protección de datos', status: 'Healthy', color: 'text-[#16A34A]' },
-              { label: 'Cumplimiento', status: 'Healthy', color: 'text-[#16A34A]' },
+              { label: 'IAM', status: healthText[region.security.iam], color: healthColor[region.security.iam] },
+              {
+                label: 'MFA',
+                status: region.security.mfa === 'healthy' ? 'Habilitado' : region.security.mfa === 'review' ? 'Parcial' : 'Deshabilitado',
+                color: healthColor[region.security.mfa],
+              },
+              { label: 'Protección de datos', status: healthText[region.security.dataProtection], color: healthColor[region.security.dataProtection] },
+              { label: 'Cumplimiento', status: healthText[region.security.compliance], color: healthColor[region.security.compliance] },
               { label: 'Modelo responsabilidad', status: 'Documentado', color: 'text-[#2563EB]' },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between text-sm">
@@ -172,25 +207,30 @@ export default function Dashboard() {
         {/* Global Infrastructure */}
         <div className="xl:col-span-1 bg-white rounded-xl border border-[#E2E8F0] p-5">
           <h2 className="text-sm font-semibold text-[#1E293B] mb-1">Infraestructura Global</h2>
-          <p className="text-xs text-[#64748B] mb-4">Regiones configuradas</p>
+          <p className="text-xs text-[#64748B] mb-4">Regiones configuradas ({regions.length})</p>
           <div className="space-y-3">
-            {regions.slice(0, 3).map((region) => (
-              <div
-                key={region.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-[#E2E8F0]"
+            {otherRegions.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRegionId(r.id)}
+                className={`w-full text-left flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                  r.id === region.id
+                    ? 'bg-blue-50/60 border-[#2563EB]'
+                    : 'bg-slate-50 border-[#E2E8F0] hover:border-slate-300'
+                }`}
               >
-                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor[region.status]}`} />
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColor[r.status]}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[#1E293B] truncate">{region.name}</p>
-                  <p className="text-xs text-[#64748B]">{region.location}</p>
+                  <p className="text-sm font-medium text-[#1E293B] truncate">{r.name}</p>
+                  <p className="text-xs text-[#64748B]">{r.location}</p>
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wide text-[#64748B]">
-                  {region.status === 'operational' ? 'Operativo' : 'Revisión'}
+                  {r.id === region.id ? 'Actual' : regionStatusLabel[r.status]}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
-          <button className="mt-3 w-full text-xs text-[#2563EB] font-medium flex items-center justify-center gap-1 hover:underline">
+          <button onClick={openRegionsModal} className="mt-3 w-full text-xs text-[#2563EB] font-medium flex items-center justify-center gap-1 hover:underline">
             Ver todas las regiones <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -208,31 +248,35 @@ export default function Dashboard() {
                   <th className="pb-2 font-medium">Servicio</th>
                   <th className="pb-2 font-medium">Categoría</th>
                   <th className="pb-2 font-medium">Estado</th>
-                  <th className="pb-2 font-medium">Uso</th>
+                  <th className="pb-2 font-medium text-right">Recursos</th>
+                  <th className="pb-2 font-medium text-right">Uso</th>
                 </tr>
               </thead>
               <tbody>
                 {services.map((svc) => (
-                  <tr key={svc.id} className="border-b border-[#E2E8F0]/last:border-0">
+                  <tr key={svc.id} className="border-b border-[#E2E8F0] last:border-0">
                     <td className="py-2.5 font-medium text-[#1E293B]">{svc.name}</td>
                     <td className="py-2.5 text-[#64748B]">{svc.category}</td>
                     <td className="py-2.5">
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          svc.status === 'in-use'
+                          isUp(svc.id)
                             ? 'bg-green-50 text-[#16A34A]'
                             : 'bg-slate-100 text-[#64748B]'
                         }`}
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${
-                            svc.status === 'in-use' ? 'bg-[#16A34A]' : 'bg-slate-400'
+                            isUp(svc.id) ? 'bg-[#16A34A]' : 'bg-slate-400'
                           }`}
                         />
-                        {svc.status === 'in-use' ? 'En uso' : 'Disponible'}
+                        {isUp(svc.id) ? 'En uso' : 'Disponible'}
                       </span>
                     </td>
-                    <td className="py-2.5 text-[#64748B] text-xs">{svc.mainFunction}</td>
+                    <td className="py-2.5 text-[#64748B] text-xs text-right">{metrics[svc.id]?.resources ?? 0}</td>
+                    <td className="py-2.5 text-[#64748B] text-xs text-right">
+                      {metrics[svc.id]?.status === 'in-use' ? `${metrics[svc.id].usage}%` : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -246,9 +290,9 @@ export default function Dashboard() {
           <div className="flex flex-col items-center gap-1 py-2">
             {[
               { label: 'Internet', icon: Globe2, color: 'bg-slate-100 text-slate-600' },
-              { label: 'Route 53', icon: Globe2, color: 'bg-blue-50 text-[#2563EB]' },
-              { label: 'CloudFront', icon: Cloud, color: 'bg-purple-50 text-purple-600' },
-              { label: 'VPC', icon: Network, color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'Route 53', icon: Globe2, color: isUp('route53') ? 'bg-blue-50 text-[#2563EB]' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-300' },
+              { label: 'CloudFront', icon: Cloud, color: isUp('cloudfront') ? 'bg-purple-50 text-purple-600' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-300' },
+              { label: 'VPC', icon: Network, color: isUp('vpc') ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-300' },
             ].map((item, i) => {
               const Icon = item.icon;
               return (
@@ -265,13 +309,13 @@ export default function Dashboard() {
             })}
             <div className="w-0.5 h-4 bg-[#E2E8F0]" />
             <div className="flex gap-3 mt-1">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 text-[#F59E0B] text-sm font-medium">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${isUp('ec2') ? 'bg-orange-50 text-[#F59E0B]' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-300'}`}>
                 <Server className="w-4 h-4" />
-                EC2
+                EC2 × {metrics.ec2?.resources ?? 0}
               </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 text-[#16A34A] text-sm font-medium">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${isUp('rds') ? 'bg-green-50 text-[#16A34A]' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-300'}`}>
                 <Database className="w-4 h-4" />
-                RDS
+                RDS × {metrics.rds?.resources ?? 0}
               </div>
             </div>
           </div>

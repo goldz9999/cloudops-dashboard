@@ -50,7 +50,7 @@ export default function ArquitecturaRed() {
                 <Cloud className="w-5 h-5" />
                 CLOUDFRONT
               </div>
-              <p className="text-[10px] text-center text-[#64748B] mt-1">CDN / Edge Locations</p>
+              <p className="text-[10px] text-center text-[#64748B] mt-1">CDN / Ubicaciones perimetrales</p>
             </div>
 
             <div className="flex flex-col items-center py-1">
@@ -77,13 +77,13 @@ export default function ArquitecturaRed() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#1E293B]">EC2</p>
-                      <p className="text-[10px] text-[#64748B]">Compute</p>
+                      <p className="text-[10px] text-[#64748B]">Cómputo</p>
                     </div>
                   </div>
                   <div className="space-y-1 text-[11px] text-[#64748B]">
                     <p>• t3.medium × 2</p>
-                    <p>• Auto Scaling Group</p>
-                    <p>• Private Subnet</p>
+                    <p>• Grupo de Auto Scaling</p>
+                    <p>• Subred privada</p>
                   </div>
                   <div className="mt-2 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
@@ -99,17 +99,17 @@ export default function ArquitecturaRed() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-[#1E293B]">RDS</p>
-                      <p className="text-[10px] text-[#64748B]">Database</p>
+                      <p className="text-[10px] text-[#64748B]">Base de datos</p>
                     </div>
                   </div>
                   <div className="space-y-1 text-[11px] text-[#64748B]">
                     <p>• PostgreSQL 15</p>
-                    <p>• Multi-AZ</p>
-                    <p>• Private Subnet</p>
+                    <p>• Multi-AZ (alta disponibilidad)</p>
+                    <p>• Subred privada</p>
                   </div>
                   <div className="mt-2 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-                    <span className="text-[10px] text-[#16A34A] font-medium">Available</span>
+                    <span className="text-[10px] text-[#16A34A] font-medium">Disponible</span>
                   </div>
                 </div>
               </div>
