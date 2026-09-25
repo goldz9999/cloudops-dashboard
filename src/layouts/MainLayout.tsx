@@ -14,6 +14,7 @@ import {
   CloudCog,
   Sun,
   Moon,
+  MapPin,
 } from 'lucide-react';
 import RegionSelector from '../components/common/RegionSelector';
 import RegionsModal from '../components/common/RegionsModal';
@@ -43,6 +44,7 @@ const navSections = [
     title: 'RECURSOS',
     items: [
       { path: '/servicios', label: 'Servicios AWS', icon: Server },
+      { path: '/auditoria', label: 'Auditoría GPS', icon: MapPin },
     ],
   },
 ];
@@ -55,6 +57,7 @@ const pageTitles: Record<string, string> = {
   '/seguridad': 'Seguridad',
   '/red': 'Arquitectura de Red',
   '/servicios': 'Servicios AWS',
+  '/auditoria': 'Auditoría GPS',
 };
 
 export default function MainLayout() {
