@@ -144,7 +144,7 @@ export default function InteractiveChart() {
                 onClick={() => toggle(s)}
                 aria-pressed={!off}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition-colors ${
-                  off ? 'border-border text-slate-400' : 'border-transparent bg-slate-100 text-text-main'
+                  off ? 'border-border text-slate-400 dark:text-slate-600' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-text-main'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full" style={{ background: off ? '#CBD5E1' : colorFor(s) }} />

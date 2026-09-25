@@ -1,13 +1,42 @@
 import { Globe2, Cloud, Network, Server, Database, ArrowDown } from 'lucide-react';
 import { networkComponents } from '../data/mockData';
+import { useRegion } from '../context/useRegion';
+import { regionsData, regionLabel, type RegionStatus } from '../data/regionData';
+
+const statusLabel: Record<RegionStatus, string> = {
+  operational: 'Operativa',
+  review: 'En revisión',
+  issue: 'Con problemas',
+};
+
+const statusStyle: Record<RegionStatus, string> = {
+  operational: 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30',
+  review: 'bg-amber-50 dark:bg-amber-500/10 text-[#D97706] border-amber-200 dark:border-amber-500/30',
+  issue: 'bg-red-50 dark:bg-red-500/10 text-[#DC2626] border-red-200 dark:border-red-500/30',
+};
 
 export default function ArquitecturaRed() {
+  const { region } = useRegion();
+
+  // La VPC no tiene un CIDR propio en los datos; se deriva de forma estable
+  // según la posición de la región en el catálogo (10.<índice>.0.0/16).
+  const regionIndex = regionsData.findIndex((r) => r.id === region.id);
+  const vpcCidr = `10.${Math.max(regionIndex, 0)}.0.0/16`;
+
+  const ec2 = region.serviceMetrics['ec2'];
+  const rds = region.serviceMetrics['rds'];
+  const ec2Active = ec2?.status === 'in-use';
+  const rdsActive = rds?.status === 'in-use';
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-text-main">Arquitectura de Red</h1>
         <p className="text-sm text-text-secondary mt-0.5">
-          Representación visual de la arquitectura de red Cloud — desde Internet hasta los recursos internos
+          Representación visual de la arquitectura de red Cloud — desde Internet hasta los recursos internos en{' '}
+          <span className="font-medium text-text-main">
+            {region.id} — {regionLabel(region)}
+          </span>
         </p>
       </div>
 
@@ -60,17 +89,23 @@ export default function ArquitecturaRed() {
 
             {/* VPC Container */}
             <div className="w-full border-2 border-dashed border-indigo-300 dark:border-indigo-500/40 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/10 p-5">
-              <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
                 <Network className="w-5 h-5 text-indigo-600" />
                 <span className="font-semibold text-indigo-700 text-sm">VPC</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300">
-                  10.0.0.0/16
+                  {vpcCidr}
+                </span>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${statusStyle[region.status]}`}>
+                  {statusLabel[region.status]}
                 </span>
               </div>
+              <p className="text-[10px] text-center text-text-secondary mb-4">
+                {region.id} — {regionLabel(region)}
+              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* EC2 */}
-                <div className="bg-card rounded-xl border border-orange-200 dark:border-orange-500/30 p-4 shadow-sm">
+                <div className={`bg-card rounded-xl border border-orange-200 dark:border-orange-500/30 p-4 shadow-sm ${ec2Active ? '' : 'opacity-60'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center">
                       <Server className="w-4 h-4 text-[#F59E0B]" />
@@ -81,18 +116,26 @@ export default function ArquitecturaRed() {
                     </div>
                   </div>
                   <div className="space-y-1 text-[11px] text-text-secondary">
-                    <p>• t3.medium × 2</p>
-                    <p>• Grupo de Auto Scaling</p>
-                    <p>• Subred privada</p>
+                    {ec2Active ? (
+                      <>
+                        <p>• {ec2.resources} recursos desplegados</p>
+                        <p>• Uso: {ec2.usage} %</p>
+                        <p>• Subred privada</p>
+                      </>
+                    ) : (
+                      <p>• No desplegado en esta región</p>
+                    )}
                   </div>
                   <div className="mt-2 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-                    <span className="text-[10px] text-[#16A34A] font-medium">Running</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${ec2Active ? 'bg-[#16A34A]' : 'bg-slate-400'}`} />
+                    <span className={`text-[10px] font-medium ${ec2Active ? 'text-[#16A34A]' : 'text-text-secondary'}`}>
+                      {ec2Active ? 'Running' : 'Sin recursos'}
+                    </span>
                   </div>
                 </div>
 
                 {/* RDS */}
-                <div className="bg-card rounded-xl border border-green-200 dark:border-green-500/30 p-4 shadow-sm">
+                <div className={`bg-card rounded-xl border border-green-200 dark:border-green-500/30 p-4 shadow-sm ${rdsActive ? '' : 'opacity-60'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-500/10 flex items-center justify-center">
                       <Database className="w-4 h-4 text-[#16A34A]" />
@@ -103,13 +146,21 @@ export default function ArquitecturaRed() {
                     </div>
                   </div>
                   <div className="space-y-1 text-[11px] text-text-secondary">
-                    <p>• PostgreSQL 15</p>
-                    <p>• Multi-AZ (alta disponibilidad)</p>
-                    <p>• Subred privada</p>
+                    {rdsActive ? (
+                      <>
+                        <p>• {rds.resources} recursos desplegados</p>
+                        <p>• Uso: {rds.usage} %</p>
+                        <p>• Subred privada</p>
+                      </>
+                    ) : (
+                      <p>• No desplegado en esta región</p>
+                    )}
                   </div>
                   <div className="mt-2 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-                    <span className="text-[10px] text-[#16A34A] font-medium">Disponible</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${rdsActive ? 'bg-[#16A34A]' : 'bg-slate-400'}`} />
+                    <span className={`text-[10px] font-medium ${rdsActive ? 'text-[#16A34A]' : 'text-text-secondary'}`}>
+                      {rdsActive ? 'Disponible' : 'Sin recursos'}
+                    </span>
                   </div>
                 </div>
               </div>

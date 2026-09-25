@@ -18,7 +18,7 @@ export default function RegionSelector({ compact = false }: Props) {
         value={regionId}
         onChange={(e) => setRegionId(e.target.value)}
         aria-label="Seleccionar región"
-        className="min-w-0 max-w-full bg-transparent text-xs font-medium text-text-main focus:outline-none cursor-pointer truncate"
+        className="min-w-0 max-w-full bg-transparent text-xs font-medium text-text-main focus:outline-none cursor-pointer truncate [color-scheme:light] dark:[color-scheme:dark]"
       >
         {regions.map((r) => (
           <option key={r.id} value={r.id}>
