@@ -15,6 +15,37 @@ const statusStyle: Record<RegionStatus, string> = {
   issue: 'bg-red-50 dark:bg-red-500/10 text-[#DC2626] border-red-200 dark:border-red-500/30',
 };
 
+interface EdgeNodeProps {
+  label: string;
+  caption: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+  activeCls: string;
+  resources?: number;
+  usage?: number;
+}
+
+/** Nodo del diagrama que se atenúa (borde punteado) cuando el servicio no está en uso en la región. */
+function EdgeNode({ label, caption, icon: Icon, active, activeCls, resources, usage }: EdgeNodeProps) {
+  return (
+    <div className="w-full max-w-xs">
+      <div
+        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-colors ${
+          active
+            ? activeCls
+            : 'bg-slate-50 dark:bg-slate-800/60 text-slate-400 border border-dashed border-slate-300 dark:border-slate-600'
+        }`}
+      >
+        <Icon className="w-5 h-5" />
+        {label}
+      </div>
+      <p className="text-[10px] text-center text-text-secondary mt-1">
+        {active ? `${caption} · ${resources} rec. · Uso ${usage} %` : 'No desplegado en esta región'}
+      </p>
+    </div>
+  );
+}
+
 export default function ArquitecturaRed() {
   const { region } = useRegion();
 
@@ -25,6 +56,12 @@ export default function ArquitecturaRed() {
 
   const ec2 = region.serviceMetrics['ec2'];
   const rds = region.serviceMetrics['rds'];
+  const route53 = region.serviceMetrics['route53'];
+  const cloudfront = region.serviceMetrics['cloudfront'];
+  const vpc = region.serviceMetrics['vpc'];
+  const route53Active = route53?.status === 'in-use';
+  const cloudfrontActive = cloudfront?.status === 'in-use';
+  const vpcActive = vpc?.status === 'in-use';
   const ec2Active = ec2?.status === 'in-use';
   const rdsActive = rds?.status === 'in-use';
 
@@ -60,13 +97,15 @@ export default function ArquitecturaRed() {
             </div>
 
             {/* Route 53 */}
-            <div className="w-full max-w-xs">
-              <div className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-[#2563EB] font-semibold text-sm">
-                <Globe2 className="w-5 h-5" />
-                ROUTE 53
-              </div>
-              <p className="text-[10px] text-center text-text-secondary mt-1">DNS & Traffic Routing</p>
-            </div>
+            <EdgeNode
+              label="ROUTE 53"
+              caption="DNS & Traffic Routing"
+              icon={Globe2}
+              active={route53Active}
+              activeCls="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-[#2563EB]"
+              resources={route53?.resources}
+              usage={route53?.usage}
+            />
 
             <div className="flex flex-col items-center py-1">
               <div className="w-0.5 h-6 bg-border" />
@@ -74,13 +113,15 @@ export default function ArquitecturaRed() {
             </div>
 
             {/* CloudFront */}
-            <div className="w-full max-w-xs">
-              <div className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 text-purple-700 font-semibold text-sm">
-                <Cloud className="w-5 h-5" />
-                CLOUDFRONT
-              </div>
-              <p className="text-[10px] text-center text-text-secondary mt-1">CDN / Ubicaciones perimetrales</p>
-            </div>
+            <EdgeNode
+              label="CLOUDFRONT"
+              caption="CDN / Ubicaciones perimetrales"
+              icon={Cloud}
+              active={cloudfrontActive}
+              activeCls="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-400"
+              resources={cloudfront?.resources}
+              usage={cloudfront?.usage}
+            />
 
             <div className="flex flex-col items-center py-1">
               <div className="w-0.5 h-6 bg-border" />
@@ -88,10 +129,10 @@ export default function ArquitecturaRed() {
             </div>
 
             {/* VPC Container */}
-            <div className="w-full border-2 border-dashed border-indigo-300 dark:border-indigo-500/40 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/10 p-5">
+            <div className={`w-full border-2 border-dashed rounded-2xl p-5 transition-opacity ${vpcActive ? 'border-indigo-300 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/40 opacity-70'}`}>
               <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
                 <Network className="w-5 h-5 text-indigo-600" />
-                <span className="font-semibold text-indigo-700 text-sm">VPC</span>
+                <span className="font-semibold text-indigo-700 dark:text-indigo-400 text-sm">VPC</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300">
                   {vpcCidr}
                 </span>

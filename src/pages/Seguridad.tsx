@@ -1,9 +1,18 @@
-import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { sharedResponsibility, iamCards } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
 import ExportMenu from '../components/common/ExportMenu';
 import { buildSecurityReport } from '../utils/reportBuilders';
+import InfoTip from '../components/common/InfoTip';
+import {
+  awsResponsibilityInfo,
+  customerResponsibilityInfo,
+  accountProtectionInfo,
+  dataProtectionInfo,
+  complianceInfo,
+  type InfoEntry,
+} from '../data/securityInfo';
 
 const statusIcon = {
   healthy: <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />,
@@ -16,6 +25,16 @@ const statusBadge = {
   review: 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30',
   issue: 'bg-red-50 dark:bg-red-500/10 text-[#DC2626] border-red-200 dark:border-red-500/30',
 };
+
+/** Etiqueta con tooltip si existe explicación para ella; si no, texto plano. */
+function Labeled({ label, info }: { label: string; info?: InfoEntry }) {
+  if (!info) return <>{label}</>;
+  return (
+    <InfoTip description={info.description} recommendation={info.recommendation}>
+      {label}
+    </InfoTip>
+  );
+}
 
 export default function Seguridad() {
   const { region } = useRegion();
@@ -62,6 +81,14 @@ export default function Seguridad() {
       </div>
 
       {/* Shared Responsibility Model */}
+      <div className="flex items-start gap-2 text-xs text-text-secondary">
+        <Info className="w-4 h-4 shrink-0 text-primary mt-px" />
+        <p>
+          <span className="font-medium text-text-main">Modelo de responsabilidad compartida:</span> AWS protege la
+          nube (la infraestructura) y tú proteges lo que hay <em>dentro</em> de ella. Pasa el cursor sobre cualquier
+          elemento con el icono ⓘ para ver qué significa.
+        </p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -70,14 +97,14 @@ export default function Seguridad() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-text-main">AWS</h2>
-              <p className="text-xs text-text-secondary">Responsabilidad de AWS</p>
+              <p className="text-xs text-text-secondary">Seguridad <strong className="font-semibold text-text-main">DE</strong> la nube — AWS protege la infraestructura</p>
             </div>
           </div>
           <ul className="space-y-2">
             {sharedResponsibility.aws.map((item) => (
               <li key={item} className="flex items-center gap-2 text-sm text-text-main">
                 <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-                {item}
+                <Labeled label={item} info={awsResponsibilityInfo[item]} />
               </li>
             ))}
           </ul>
@@ -89,14 +116,14 @@ export default function Seguridad() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-text-main">Cliente</h2>
-              <p className="text-xs text-text-secondary">Responsabilidad del cliente</p>
+              <p className="text-xs text-text-secondary">Seguridad <strong className="font-semibold text-text-main">EN</strong> la nube — tú proteges tus datos, accesos y configuración</p>
             </div>
           </div>
           <ul className="space-y-2">
             {sharedResponsibility.customer.map((item) => (
               <li key={item} className="flex items-center gap-2 text-sm text-text-main">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
-                {item}
+                <Labeled label={item} info={customerResponsibilityInfo[item]} />
               </li>
             ))}
           </ul>
@@ -136,7 +163,7 @@ export default function Seguridad() {
               { label: 'CloudTrail habilitado', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-text-main">{item.label}</span>
+                <span className="text-sm text-text-main"><Labeled label={item.label} info={accountProtectionInfo[item.label]} /></span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
                   {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
                 </span>
@@ -159,7 +186,7 @@ export default function Seguridad() {
               { label: 'Bloqueo de acceso público en S3', status: 'healthy' as const },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-text-main">{item.label}</span>
+                <span className="text-sm text-text-main"><Labeled label={item.label} info={dataProtectionInfo[item.label]} /></span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
                   {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
                 </span>
@@ -186,7 +213,9 @@ export default function Seguridad() {
               key={item.name}
               className={`rounded-lg border p-3 ${statusBadge[item.status]}`}
             >
-              <p className="text-sm font-medium">{item.name}</p>
+              <p className="text-sm font-medium">
+                <Labeled label={item.name} info={complianceInfo[item.name]} />
+              </p>
               <p className="text-xs mt-1">
                 {item.status === 'healthy' ? '🟢 Conforme' : '🟡 En revisión'}
               </p>

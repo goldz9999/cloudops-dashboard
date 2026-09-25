@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
 import { NumInput } from './CostosTable';
+import Select from '../common/Select';
 import { SERVICE_OPTIONS } from './costoData';
 
 export interface CostForm {
@@ -25,17 +26,12 @@ export default function CostosForm({ form, onServiceChange, onFieldChange, onAdd
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-1.5">Servicio</label>
-          <select
+          <Select
+            ariaLabel="Servicio"
             value={form.service}
-            onChange={(e) => onServiceChange(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card text-text-main focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 [color-scheme:light] dark:[color-scheme:dark]"
-          >
-            {SERVICE_OPTIONS.map((opt) => (
-              <option key={opt.name} value={opt.name}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
+            onChange={onServiceChange}
+            options={SERVICE_OPTIONS.map((opt) => ({ value: opt.name, label: opt.name }))}
+          />
         </div>
 
         <div>
