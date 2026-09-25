@@ -1,5 +1,4 @@
-import { Globe2, Cloud, Network, Server, Database, ArrowDown } from 'lucide-react';
-import { networkComponents } from '../data/mockData';
+import { Globe2, Cloud, Network, Server, Database, ArrowDown, Activity, Layers } from 'lucide-react';
 import { useRegion } from '../context/useRegion';
 import { regionsData, regionLabel, type RegionStatus } from '../data/regionData';
 
@@ -65,6 +64,48 @@ export default function ArquitecturaRed() {
   const ec2Active = ec2?.status === 'in-use';
   const rdsActive = rds?.status === 'in-use';
 
+  // KPIs de red (servicios de red: VPC, Route 53, CloudFront)
+  const networkServices = [vpc, route53, cloudfront].filter(Boolean);
+  const networkInUse = networkServices.filter((s) => s!.status === 'in-use');
+  const networkResources = networkInUse.reduce((sum, s) => sum + (s?.resources ?? 0), 0);
+  const networkUsageAvg =
+    networkInUse.length > 0
+      ? Math.round(networkInUse.reduce((sum, s) => sum + (s?.usage ?? 0), 0) / networkInUse.length)
+      : 0;
+
+  const kpis = [
+    {
+      label: 'Servicios de red en uso',
+      value: networkInUse.length,
+      icon: Network,
+      color: 'text-[#2563EB]',
+    },
+    {
+      label: 'Recursos de red',
+      value: networkResources,
+      icon: Layers,
+      color: 'text-[#8B5CF6]',
+    },
+    {
+      label: 'Uso medio de red',
+      value: networkInUse.length > 0 ? `${networkUsageAvg} %` : '—',
+      icon: Activity,
+      color: 'text-[#F59E0B]',
+    },
+    {
+      label: 'Disponibilidad de la región',
+      value: `${region.availability} %`,
+      icon: Globe2,
+      color: 'text-[#16A34A]',
+    },
+    {
+      label: 'Estado de la VPC',
+      value: vpcActive ? 'Activa' : 'Sin recursos',
+      icon: Cloud,
+      color: vpcActive ? 'text-[#16A34A]' : 'text-text-secondary',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -75,6 +116,20 @@ export default function ArquitecturaRed() {
             {region.id} — {regionLabel(region)}
           </span>
         </p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
+              <Icon className={`w-4 h-4 ${kpi.color} mb-2`} />
+              <p className="text-xl font-semibold text-text-main">{kpi.value}</p>
+              <p className="text-xs text-text-secondary mt-0.5">{kpi.label}</p>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -129,7 +184,13 @@ export default function ArquitecturaRed() {
             </div>
 
             {/* VPC Container */}
-            <div className={`w-full border-2 border-dashed rounded-2xl p-5 transition-opacity ${vpcActive ? 'border-indigo-300 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10' : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/40 opacity-70'}`}>
+            <div
+              className={`w-full border-2 border-dashed rounded-2xl p-5 transition-opacity ${
+                vpcActive
+                  ? 'border-indigo-300 dark:border-indigo-500/40 bg-indigo-50/50 dark:bg-indigo-500/10'
+                  : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/40 opacity-70'
+              }`}
+            >
               <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
                 <Network className="w-5 h-5 text-indigo-600" />
                 <span className="font-semibold text-indigo-700 dark:text-indigo-400 text-sm">VPC</span>
@@ -146,7 +207,11 @@ export default function ArquitecturaRed() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* EC2 */}
-                <div className={`bg-card rounded-xl border border-orange-200 dark:border-orange-500/30 p-4 shadow-sm ${ec2Active ? '' : 'opacity-60'}`}>
+                <div
+                  className={`bg-card rounded-xl border border-orange-200 dark:border-orange-500/30 p-4 shadow-sm ${
+                    ec2Active ? '' : 'opacity-60'
+                  }`}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center">
                       <Server className="w-4 h-4 text-[#F59E0B]" />
@@ -169,14 +234,22 @@ export default function ArquitecturaRed() {
                   </div>
                   <div className="mt-2 flex items-center gap-1">
                     <span className={`w-1.5 h-1.5 rounded-full ${ec2Active ? 'bg-[#16A34A]' : 'bg-slate-400'}`} />
-                    <span className={`text-[10px] font-medium ${ec2Active ? 'text-[#16A34A]' : 'text-text-secondary'}`}>
+                    <span
+                      className={`text-[10px] font-medium ${
+                        ec2Active ? 'text-[#16A34A]' : 'text-text-secondary'
+                      }`}
+                    >
                       {ec2Active ? 'Running' : 'Sin recursos'}
                     </span>
                   </div>
                 </div>
 
                 {/* RDS */}
-                <div className={`bg-card rounded-xl border border-green-200 dark:border-green-500/30 p-4 shadow-sm ${rdsActive ? '' : 'opacity-60'}`}>
+                <div
+                  className={`bg-card rounded-xl border border-green-200 dark:border-green-500/30 p-4 shadow-sm ${
+                    rdsActive ? '' : 'opacity-60'
+                  }`}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-500/10 flex items-center justify-center">
                       <Database className="w-4 h-4 text-[#16A34A]" />
@@ -199,7 +272,11 @@ export default function ArquitecturaRed() {
                   </div>
                   <div className="mt-2 flex items-center gap-1">
                     <span className={`w-1.5 h-1.5 rounded-full ${rdsActive ? 'bg-[#16A34A]' : 'bg-slate-400'}`} />
-                    <span className={`text-[10px] font-medium ${rdsActive ? 'text-[#16A34A]' : 'text-text-secondary'}`}>
+                    <span
+                      className={`text-[10px] font-medium ${
+                        rdsActive ? 'text-[#16A34A]' : 'text-text-secondary'
+                      }`}
+                    >
                       {rdsActive ? 'Disponible' : 'Sin recursos'}
                     </span>
                   </div>
@@ -209,24 +286,107 @@ export default function ArquitecturaRed() {
           </div>
         </div>
 
-        {/* Network Components panel */}
+                {/* Componentes de red dinámicos por región */}
         <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="text-sm font-semibold text-text-main mb-4">Network Components</h2>
+          <h2 className="text-sm font-semibold text-text-main mb-4">Componentes de red</h2>
           <div className="space-y-3">
-            {networkComponents.map((comp, i) => (
-              <div
-                key={comp.name}
-                className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border"
-              >
-                <div className="w-6 h-6 rounded-full bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center text-xs font-bold shrink-0">
-                  {i + 1}
+            {[
+              {
+                id: 'route53',
+                name: 'Route 53',
+                description: 'DNS y enrutamiento de tráfico',
+                icon: Globe2,
+                metric: route53,
+                active: route53Active,
+                note: 'Resolución global',
+                accent: 'text-[#2563EB]',
+                bg: 'bg-blue-50 dark:bg-blue-500/10',
+              },
+              {
+                id: 'cloudfront',
+                name: 'CloudFront',
+                description: 'CDN de entrega de contenido',
+                icon: Cloud,
+                metric: cloudfront,
+                active: cloudfrontActive,
+                note: 'Edge locations',
+                accent: 'text-purple-600 dark:text-purple-400',
+                bg: 'bg-purple-50 dark:bg-purple-500/10',
+              },
+              {
+                id: 'vpc',
+                name: 'VPC',
+                description: 'Red virtual aislada',
+                icon: Network,
+                metric: vpc,
+                active: vpcActive,
+                note: vpcCidr,
+                accent: 'text-indigo-600 dark:text-indigo-400',
+                bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+              },
+              {
+                id: 'ec2',
+                name: 'EC2',
+                description: 'Instancias de cómputo',
+                icon: Server,
+                metric: ec2,
+                active: ec2Active,
+                note: 'Subred privada',
+                accent: 'text-[#F59E0B]',
+                bg: 'bg-orange-50 dark:bg-orange-500/10',
+              },
+              {
+                id: 'rds',
+                name: 'RDS',
+                description: 'Base de datos administrada',
+                icon: Database,
+                metric: rds,
+                active: rdsActive,
+                note: 'Subred privada',
+                accent: 'text-[#16A34A]',
+                bg: 'bg-green-50 dark:bg-green-500/10',
+              },
+            ].map((comp) => {
+              const Icon = comp.icon;
+              return (
+                <div
+                  key={comp.id}
+                  className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-opacity ${
+                    comp.active ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-slate-50/60 dark:bg-slate-800/30 opacity-70'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-lg ${comp.bg} flex items-center justify-center shrink-0`}>
+                    <Icon className={`w-4 h-4 ${comp.accent}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-text-main">{comp.name}</p>
+                      <span
+                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border shrink-0 ${
+                          comp.active
+                            ? 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30'
+                            : 'bg-slate-100 dark:bg-slate-800 text-text-secondary border-border'
+                        }`}
+                      >
+                        {comp.active ? 'En uso' : 'No desplegado'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-0.5">{comp.description}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-text-secondary">
+                      {comp.active ? (
+                        <>
+                          <span>{comp.metric?.resources ?? 0} recursos</span>
+                          <span>Uso {comp.metric?.usage ?? 0} %</span>
+                          <span className={comp.accent}>{comp.note}</span>
+                        </>
+                      ) : (
+                        <span>Sin recursos en esta región</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-text-main">{comp.name}</p>
-                  <p className="text-xs text-text-secondary mt-0.5">{comp.description}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-6 pt-4 border-t border-border">
