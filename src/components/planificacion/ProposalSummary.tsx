@@ -18,9 +18,12 @@ interface Props {
   summary: Summary;
   services: Service[];
   isSaved: boolean;
+  /** Si se pasa, muestra el botón para aplicar la propuesta a la calculadora de costos. */
+  onApplyToCosts?: () => void;
+  applying?: boolean;
 }
 
-export default function ProposalSummary({ summary, services, isSaved }: Props) {
+export default function ProposalSummary({ summary, services, isSaved, onApplyToCosts, applying }: Props) {
   const summaryServices = services.filter((s) => summary.selected.includes(s.id));
 
   return (
@@ -28,7 +31,9 @@ export default function ProposalSummary({ summary, services, isSaved }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-text-main">Resumen de la propuesta</h2>
         {isSaved && (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-text-secondary">Guardada</span>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-text-secondary">
+            Guardada
+          </span>
         )}
       </div>
       <dl className="space-y-3 text-sm">
@@ -64,15 +69,36 @@ export default function ProposalSummary({ summary, services, isSaved }: Props) {
           {summaryServices.map((svc) => {
             const Icon = svc.icon;
             return (
-              <div key={svc.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] text-xs font-medium">
+              <div
+                key={svc.id}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] text-xs font-medium"
+              >
                 <Icon className="w-3.5 h-3.5" />
                 {svc.name}
               </div>
             );
           })}
-          {summaryServices.length === 0 && <p className="text-xs text-text-secondary">Ningún servicio seleccionado</p>}
+          {summaryServices.length === 0 && (
+            <p className="text-xs text-text-secondary">Ningún servicio seleccionado</p>
+          )}
         </div>
       </div>
+
+      {isSaved && onApplyToCosts && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onApplyToCosts}
+            disabled={applying || summary.selected.length === 0}
+            className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-[#2563EB] text-white hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {applying ? 'Aplicando…' : 'Aplicar a Costos'}
+          </button>
+          <p className="text-[10px] text-text-secondary mt-2 text-center">
+            Reemplaza la tabla de costos de esta región con los servicios de la propuesta.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

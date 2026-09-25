@@ -2,6 +2,9 @@ export interface Proposal {
   id: number;
   name: string;
   type: string;
+  /** ID de región AWS (ej. us-east-1) — necesario para aplicar a Costos. */
+  regionId: string;
+  /** Etiqueta legible (ej. "us-east-1 — EE. UU. Este"). */
   region: string;
   users: string;
   availability: string;
@@ -24,5 +27,7 @@ export const isProposalList = (v: unknown): v is Proposal[] =>
       typeof p.availability === 'string' &&
       typeof p.migration === 'string' &&
       typeof p.createdAt === 'string' &&
-      Array.isArray(p.selected)
+      Array.isArray(p.selected) &&
+      // regionId es opcional en propuestas antiguas guardadas en localStorage
+      (typeof (p as Proposal).regionId === 'string' || (p as Proposal).regionId === undefined)
   );
