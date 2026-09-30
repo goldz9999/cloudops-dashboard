@@ -8,6 +8,7 @@ import {
   Shield,
   Network,
   Server,
+  ClipboardCheck,
   Menu,
   X,
   ChevronRight,
@@ -45,6 +46,12 @@ const navSections = [
       { path: '/servicios', label: 'Servicios AWS', icon: Server },
     ],
   },
+  {
+    title: 'AUDITORÍA',
+    items: [
+      { path: '/auditoria', label: 'Auditoría', icon: ClipboardCheck },
+    ],
+  },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -55,6 +62,7 @@ const pageTitles: Record<string, string> = {
   '/seguridad': 'Seguridad',
   '/red': 'Arquitectura de Red',
   '/servicios': 'Servicios AWS',
+  '/auditoria': 'Auditoría',
 };
 
 export default function MainLayout() {

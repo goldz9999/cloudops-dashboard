@@ -47,7 +47,7 @@ interface Props {
 export default function CostosTable({ rows, totalMonthly, onUpdateRow, onRemoveRow }: Props) {
   return (
     <div className="xl:col-span-2 bg-card rounded-xl border border-border p-5">
-      <h2 className="text-sm font-semibold text-text-main mb-4">Calculadora de costos</h2>
+      <h2 className="text-sm font-semibold text-text-main mb-4">Planificación de costos</h2>
       <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-card">

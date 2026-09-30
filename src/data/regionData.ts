@@ -29,6 +29,16 @@ export interface RegionSecurity {
   compliance: HealthStatus;
 }
 
+export interface AvailabilityZone {
+  /** Ej. us-east-1a */
+  id: string;
+  /** Letra de la zona (a, b, c…) */
+  letter: string;
+  city: string;
+  lat: number;
+  lon: number;
+}
+
 export interface RegionData {
   id: string;
   name: string;
@@ -44,6 +54,8 @@ export interface RegionData {
   serviceMetrics: Record<string, ServiceMetric>;
   /** Nombres de los servicios en uso (derivado de serviceMetrics) */
   services: string[];
+  /** Zonas de disponibilidad de la región (ej. us-east-1a) */
+  azs: AvailabilityZone[];
   /**
    * Factores de costo de los últimos 6 meses respecto al costo actual (el último valor
    * debe ser 1 para que coincida exactamente con el costo mensual de la región).
@@ -71,7 +83,53 @@ const row = (id: number, service: string, quantity: number, hours: number, rate:
 
 const m = (status: ServiceStatus, resources: number, usage: number): ServiceMetric => ({ status, resources, usage });
 
-type RawRegion = Omit<RegionData, 'services'>;
+type RawRegion = Omit<RegionData, 'services' | 'azs'>;
+
+type AzSite = Omit<AvailabilityZone, 'id' | 'letter'>;
+
+// Zonas de disponibilidad por región, ubicadas en las ciudades/campus de centros de datos de cada área
+const AZ_SITES: Record<string, AzSite[]> = {
+  'us-east-1': [
+    { city: 'Ashburn', lat: 39.04, lon: -77.49 },
+    { city: 'Manassas', lat: 38.75, lon: -77.47 },
+    { city: 'Sterling', lat: 39.0, lon: -77.43 },
+    { city: 'Leesburg', lat: 39.12, lon: -77.56 },
+    { city: 'Reston', lat: 38.96, lon: -77.36 },
+    { city: 'Gainesville', lat: 38.8, lon: -77.61 },
+  ],
+  'us-west-2': [
+    { city: 'Boardman', lat: 45.84, lon: -119.7 },
+    { city: 'Umatilla', lat: 45.92, lon: -119.34 },
+    { city: 'Hillsboro', lat: 45.52, lon: -122.99 },
+    { city: 'Prineville', lat: 44.3, lon: -120.83 },
+  ],
+  'sa-east-1': [
+    { city: 'Vinhedo', lat: -23.03, lon: -46.98 },
+    { city: 'Osasco', lat: -23.53, lon: -46.79 },
+    { city: 'Campinas', lat: -22.91, lon: -47.06 },
+  ],
+  'eu-west-1': [
+    { city: 'Dublín', lat: 53.35, lon: -6.26 },
+    { city: 'Clonee', lat: 53.41, lon: -6.44 },
+    { city: 'Tallaght', lat: 53.29, lon: -6.37 },
+  ],
+  'eu-central-1': [
+    { city: 'Fráncfort', lat: 50.11, lon: 8.68 },
+    { city: 'Hanau', lat: 50.13, lon: 8.92 },
+    { city: 'Rüsselsheim', lat: 49.99, lon: 8.41 },
+  ],
+  'ap-southeast-1': [
+    { city: 'Jurong', lat: 1.34, lon: 103.72 },
+    { city: 'Tuas', lat: 1.3, lon: 103.64 },
+    { city: 'Changi', lat: 1.36, lon: 103.99 },
+  ],
+};
+
+const buildAzs = (regionId: string, region: { lat: number; lon: number }): AvailabilityZone[] =>
+  (AZ_SITES[regionId] ?? [{ city: '', lat: region.lat, lon: region.lon }]).map((site, i) => {
+    const letter = String.fromCharCode(97 + i);
+    return { id: `${regionId}${letter}`, letter, ...site };
+  });
 
 const rawRegions: RawRegion[] = [
   {
@@ -133,8 +191,8 @@ const rawRegions: RawRegion[] = [
     id: 'sa-east-1',
     name: 'Sudamérica',
     location: 'São Paulo',
-    lat: -23.5,
-    lon: -46.6,
+    lat: -23.55,
+    lon: -46.63,
     status: 'operational',
     securityScore: 88,
     availability: 99.7,
@@ -159,8 +217,8 @@ const rawRegions: RawRegion[] = [
     id: 'eu-west-1',
     name: 'Europa',
     location: 'Irlanda',
-    lat: 53.3,
-    lon: -8.0,
+    lat: 53.35,
+    lon: -6.26,
     status: 'review',
     securityScore: 85,
     availability: 99.5,
@@ -234,6 +292,7 @@ const rawRegions: RawRegion[] = [
 
 export const regionsData: RegionData[] = rawRegions.map((r) => ({
   ...r,
+  azs: buildAzs(r.id, r),
   services: catalog.filter((s) => r.serviceMetrics[s.id]?.status === 'in-use').map((s) => s.name),
 }));
 

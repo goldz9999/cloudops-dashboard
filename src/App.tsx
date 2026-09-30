@@ -7,6 +7,7 @@ import Infraestructura from './pages/Infraestructura';
 import Seguridad from './pages/Seguridad';
 import ArquitecturaRed from './pages/ArquitecturaRed';
 import Servicios from './pages/Servicios';
+import Auditoria from './pages/Auditoria';
 import { RegionProvider } from './context/RegionContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/seguridad" element={<Seguridad />} />
           <Route path="/red" element={<ArquitecturaRed />} />
           <Route path="/servicios" element={<Servicios />} />
+          <Route path="/auditoria" element={<Auditoria />} />
         </Route>
       </Routes>
     </BrowserRouter>
