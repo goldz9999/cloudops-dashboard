@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
 import { usePersistentState } from '../hooks/usePersistentState';
-import { regionLabel as fmtRegion, type CostRow } from '../data/regionData';
-import { Cloud, Server, Database, HardDrive, Globe2, Shield } from 'lucide-react';
+import { regionLabel as fmtRegion } from '../data/regionData';
+import { Cloud, Server, Database, HardDrive, Globe2, Shield, MapPin, Loader2 } from 'lucide-react';
 import PlanForm, { type PlanFormState } from '../components/planificacion/PlanForm';
 import ProposalList from '../components/planificacion/ProposalList';
 import ProposalSummary from '../components/planificacion/ProposalSummary';
 import ArchitecturePreview from '../components/planificacion/ArchitecturePreview';
-import { isProposalList, type Proposal } from '../components/planificacion/planTypes';
-import { isRowsByRegion, proposalToCostRows } from '../utils/proposalToCostRows';
+import { type Proposal } from '../components/planificacion/planTypes';
+import {
+  applyProposalToCostsApi,
+  createProposal,
+  fetchProposals,
+} from '../api/proposals';
+import {
+  getDevicePosition,
+  recommendRegion,
+  reverseGeocode,
+  type Place,
+  type RegionRecommendation,
+} from '../api/geo';
 
 const availableServices = [
   { id: 'ec2', name: 'EC2', icon: Server },
@@ -21,16 +32,29 @@ const availableServices = [
   { id: 'iam', name: 'IAM', icon: Shield },
 ];
 
+const ID_TO_NAME: Record<string, string> = {
+  ec2: 'EC2',
+  rds: 'RDS',
+  s3: 'S3',
+  cloudfront: 'CloudFront',
+  route53: 'Route 53',
+  iam: 'IAM',
+  vpc: 'VPC',
+};
+
 export default function Planificacion() {
   const { regionId, regions, setRegionId } = useRegion();
   const { notify } = useNotifications();
   const navigate = useNavigate();
-  const regionLabels: Record<string, string> = Object.fromEntries(regions.map((r) => [r.id, fmtRegion(r)]));
+  const regionLabels: Record<string, string> = Object.fromEntries(
+    regions.map((r) => [r.id, fmtRegion(r)])
+  );
 
   const [form, setForm] = useState<PlanFormState>({
     name: 'Aplicación Web Empresarial',
     type: 'Aplicación Web SaaS',
-    description: 'Aplicación web empresarial de alta disponibilidad con base de datos gestionada y CDN global.',
+    description:
+      'Aplicación web empresarial de alta disponibilidad con base de datos gestionada y CDN global.',
     region: regionId,
     users: '5000',
     availability: 'Alta',
@@ -39,20 +63,84 @@ export default function Planificacion() {
   });
   const [saved, setSaved] = useState(false);
   const [applying, setApplying] = useState(false);
-  const [savedProposals, setSavedProposals] = usePersistentState<Proposal[]>('proposals', [], isProposalList);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedProposals, setSavedProposals] = useState<Proposal[]>([]);
   const [selectedProposalId, setSelectedProposalId] = usePersistentState<number | null>(
     'proposal-selected',
     null,
     (v): v is number | null => v === null || typeof v === 'number'
   );
 
-  // Misma clave que usa Costos.tsx → al aplicar una propuesta se actualiza la calculadora.
-  const [, setStoredRows] = usePersistentState<Record<string, CostRow[]>>('costos-rows', {}, isRowsByRegion);
+  const [locating, setLocating] = useState(false);
+  const [place, setPlace] = useState<Place | null>(null);
+  const [recommendation, setRecommendation] = useState<RegionRecommendation | null>(null);
+
+  const loadProposals = useCallback(async () => {
+    try {
+      const list = await fetchProposals();
+      setSavedProposals(list);
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: 'No se pudieron cargar las propuestas',
+        message: e instanceof Error ? e.message : 'Error de red o del backend',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    void loadProposals();
+  }, [loadProposals]);
+
+  const detectLocationAndRecommend = async () => {
+    setLocating(true);
+    try {
+      const pos = await getDevicePosition();
+      const { latitude: lat, longitude: lon } = pos.coords;
+
+      const [placeRes, rec] = await Promise.all([
+        reverseGeocode(lat, lon),
+        recommendRegion(lat, lon),
+      ]);
+
+      setPlace(placeRes);
+      setRecommendation(rec);
+      setForm((prev) => ({ ...prev, region: rec.regionId }));
+      setRegionId(rec.regionId);
+
+      notify({
+        type: 'success',
+        title: 'Región recomendada',
+        message: rec.message,
+      });
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: 'No se pudo obtener la ubicación',
+        message:
+          e instanceof Error
+            ? e.message
+            : 'Permite el acceso a la ubicación en el navegador e inténtalo de nuevo.',
+      });
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  useEffect(() => {
+    void detectLocationAndRecommend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleService = (id: string) => {
     setForm((prev) => ({
       ...prev,
-      selected: prev.selected.includes(id) ? prev.selected.filter((s) => s !== id) : [...prev.selected, id],
+      selected: prev.selected.includes(id)
+        ? prev.selected.filter((s) => s !== id)
+        : [...prev.selected, id],
     }));
     setSaved(false);
   };
@@ -62,77 +150,66 @@ export default function Planificacion() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    const newProposal: Proposal = {
-      id: Date.now(),
-      name: form.name,
-      type: form.type,
-      regionId: form.region,
-      region: regionLabels[form.region] || form.region,
-      users: form.users,
-      availability: form.availability,
-      migration: form.migration,
-      selected: form.selected,
-      createdAt: new Date().toLocaleString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
-    setSavedProposals((prev) => [newProposal, ...prev]);
-    setSelectedProposalId(newProposal.id);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 4000);
-    notify({
-      type: 'success',
-      title: 'Propuesta guardada',
-      message: newProposal.name ? `«${newProposal.name}» se añadió a tus propuestas.` : 'Se añadió a tus propuestas.',
-    });
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const created = await createProposal({
+        name: form.name,
+        type: form.type,
+        description: form.description || '',
+        regionId: form.region,
+        users: form.users,
+        availability: form.availability,
+        migration: form.migration,
+        selected: form.selected.map((id) => ID_TO_NAME[id] ?? id),
+      });
+      setSavedProposals((prev) => [created, ...prev]);
+      setSelectedProposalId(created.id);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 4000);
+      notify({
+        type: 'success',
+        title: 'Propuesta guardada en Supabase',
+        message: created.name
+          ? `«${created.name}» se guardó en la base de datos.`
+          : 'Propuesta guardada.',
+      });
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: 'Error al guardar',
+        message: e instanceof Error ? e.message : 'No se pudo guardar la propuesta',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const applyProposalToCosts = () => {
+  const applyProposalToCosts = async () => {
     const proposal = savedProposals.find((p) => p.id === selectedProposalId);
     if (!proposal) return;
 
-    // Preferir regionId; si es una propuesta antigua sin él, intentar resolver por el label.
-    let targetRegionId = proposal.regionId;
-    if (!targetRegionId) {
-      const match = regions.find((r) => fmtRegion(r) === proposal.region || r.id === proposal.region);
-      targetRegionId = match?.id ?? regionId;
-    }
-
-    const newRows = proposalToCostRows(proposal.selected);
-    if (newRows.length === 0) {
-      notify({
-        type: 'info',
-        title: 'Sin costos generados',
-        message: 'La propuesta no tiene servicios con tarifa definida.',
-      });
-      return;
-    }
-
     setApplying(true);
-    setStoredRows((prev) => ({
-      ...prev,
-      [targetRegionId]: newRows,
-    }));
-
-    // Cambiar a la región de la propuesta para que en Costos se vea el resultado.
-    if (targetRegionId !== regionId) {
-      setRegionId(targetRegionId);
+    try {
+      const result = await applyProposalToCostsApi(proposal.id);
+      if (result.regionId && result.regionId !== regionId) {
+        setRegionId(result.regionId);
+      }
+      notify({
+        type: 'success',
+        title: 'Costos actualizados',
+        message: `Se aplicó «${proposal.name}» a la calculadora (${proposal.region}).`,
+      });
+      navigate('/costos');
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: 'No se pudo aplicar a costos',
+        message: e instanceof Error ? e.message : 'Error del backend',
+      });
+    } finally {
+      setApplying(false);
     }
-
-    notify({
-      type: 'success',
-      title: 'Costos actualizados',
-      message: `Se aplicó «${proposal.name}» a la calculadora de costos de ${proposal.region}.`,
-    });
-    window.setTimeout(() => setApplying(false), 600);
-
-    // Ir a la página de Costos para ver el resultado.
-    navigate('/costos');
   };
 
   const selectedProposal = savedProposals.find((p) => p.id === selectedProposalId) ?? null;
@@ -152,8 +229,49 @@ export default function Planificacion() {
       <div>
         <h1 className="text-xl font-semibold text-text-main">Planificación Cloud</h1>
         <p className="text-sm text-text-secondary mt-0.5">
-          Diseña y planifica la solución Cloud según los requisitos del negocio
+          Las propuestas se guardan en Supabase y alimentan Costos y el Dashboard. La región se
+          recomienda según tu ubicación (GPS).
         </p>
+        {loading && <p className="text-xs text-text-secondary mt-1">Cargando propuestas…</p>}
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="mt-0.5 p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+            <MapPin className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text-main">Ubicación y servidor recomendado</p>
+            {recommendation ? (
+              <p className="text-xs text-text-secondary mt-0.5">
+                {recommendation.message}
+                {place?.district || place?.address ? (
+                  <>
+                    {' '}
+                    · Tu zona:{' '}
+                    <span className="text-text-main">
+                      {[place.address, place.district, place.area].filter(Boolean).join(', ')}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            ) : (
+              <p className="text-xs text-text-secondary mt-0.5">
+                Usa el GPS del dispositivo para sugerir la región AWS más cercana (ej. São Paulo
+                desde Perú).
+              </p>
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void detectLocationAndRecommend()}
+          disabled={locating}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:opacity-90 disabled:opacity-60 shrink-0"
+        >
+          {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+          {locating ? 'Detectando…' : 'Detectar mi ubicación'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
@@ -164,8 +282,8 @@ export default function Planificacion() {
           regionLabel={fmtRegion}
           onChange={handleChange}
           onToggleService={toggleService}
-          onSave={handleSave}
-          saved={saved}
+          onSave={() => void handleSave()}
+          saved={saved || saving}
         />
 
         <div className="lg:col-span-2 space-y-4">
@@ -181,7 +299,7 @@ export default function Planificacion() {
             summary={summary}
             services={availableServices}
             isSaved={selectedProposal !== null}
-            onApplyToCosts={selectedProposal ? applyProposalToCosts : undefined}
+            onApplyToCosts={selectedProposal ? () => void applyProposalToCosts() : undefined}
             applying={applying}
           />
           <ArchitecturePreview selected={summary.selected} />

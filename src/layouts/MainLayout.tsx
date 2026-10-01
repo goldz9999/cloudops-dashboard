@@ -139,10 +139,9 @@ export default function MainLayout() {
                         end={item.path === '/'}
                         onClick={() => setSidebarOpen(false)}
                         className={({ isActive }) =>
-                          `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'bg-primary text-white'
-                              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                            ? 'bg-primary text-white'
+                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                           }`
                         }
                       >
@@ -185,30 +184,29 @@ export default function MainLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            {/* Region indicator */}
-            <div className="hidden md:flex items-center px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-border text-xs max-w-[340px]">
-              <RegionSelector compact />
-            </div>
+            {/* Selector de región: en el Dashboard ya existe dentro de la vista, así que aquí se oculta */}
+            {location.pathname !== '/' && (
+              <div className="hidden md:flex items-center px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-border text-xs max-w-[340px]">
+                <RegionSelector compact />
+              </div>
+            )}
 
             {/* Status */}
             <div
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
-                region.status === 'operational'
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${region.status === 'operational'
                   ? 'bg-green-50 dark:bg-green-500/10'
                   : region.status === 'review'
                     ? 'bg-amber-50 dark:bg-amber-500/10'
                     : 'bg-red-50 dark:bg-red-500/10'
-              }`}
+                }`}
             >
               <div
-                className={`w-1.5 h-1.5 rounded-full ${
-                  region.status === 'operational' ? 'bg-security' : region.status === 'review' ? 'bg-costs' : 'bg-alerts'
-                }`}
+                className={`w-1.5 h-1.5 rounded-full ${region.status === 'operational' ? 'bg-security' : region.status === 'review' ? 'bg-costs' : 'bg-alerts'
+                  }`}
               />
               <span
-                className={`font-medium ${
-                  region.status === 'operational' ? 'text-security' : region.status === 'review' ? 'text-costs' : 'text-alerts'
-                }`}
+                className={`font-medium ${region.status === 'operational' ? 'text-security' : region.status === 'review' ? 'text-costs' : 'text-alerts'
+                  }`}
               >
                 {regionStatusLabel[region.status]}
               </span>

@@ -1,6 +1,22 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
-import { Globe2, Server, CheckCircle2, AlertTriangle, ZoomIn, ZoomOut, Maximize2, Layers, X } from 'lucide-react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Globe2,
+  Server,
+  CheckCircle2,
+  AlertTriangle,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Layers,
+  X,
+  ClipboardList,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
 import { useRegion } from '../context/useRegion';
+import { fetchProposals } from '../api/proposals';
+import type { Proposal } from '../components/planificacion/planTypes';
+import { planningByRegion, type RegionPlanning } from '../utils/planningStats';
 import { WORLD_MAP_VIEWBOX, geoToMapXY, loadWorldLandPath } from '../data/worldMap';
 
 const statusConfig = {
@@ -49,12 +65,43 @@ const MAP_ARCS: [string, string][] = [
   ['us-west-2', 'ap-southeast-1'],
 ];
 
+// Respeta "reducir movimiento" del sistema (las animaciones SMIL no lo hacen solas)
+const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const EMPTY_PLANNING: RegionPlanning = { plans: 0, services: [], monthly: 0 };
+
 export default function Infraestructura() {
   const { regions, regionId, setRegionId } = useRegion();
   const mapMarkers = useMemo(
     () => regions.map((r) => ({ id: r.id, name: r.name, location: r.location, ...geoToMapXY(r.lat, r.lon) })),
     [regions]
   );
+  // Datos reales: planificaciones guardadas en el backend (Supabase), agrupadas por región
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setProposals(await fetchProposals());
+    } catch (e) {
+      setProposals([]);
+      setError(e instanceof Error ? e.message : 'No se pudo conectar con el backend');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const planning = useMemo(() => planningByRegion(proposals), [proposals]);
+  const planOf = (id: string): RegionPlanning => planning[id] ?? EMPTY_PLANNING;
+
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   // Región enfocada con zoom (muestra sus AZ) y si el cambio de vista debe animarse
@@ -197,26 +244,44 @@ export default function Infraestructura() {
   const totalAzs = regions.reduce((sum, r) => sum + r.azs.length, 0);
   const operational = regions.filter((r) => r.status === 'operational').length;
   const review = regions.filter((r) => r.status === 'review').length;
-  const totalServices = new Set(regions.flatMap((r) => r.services)).size;
+  const totalServices = new Set(Object.values(planning).flatMap((p) => p.services)).size;
+  const totalPlans = proposals.filter((p) => p.regionId).length;
 
   const getRegionStatus = (id: string) =>
     regions.find((r) => r.id === id)?.status ?? 'operational';
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-main">Infraestructura Global</h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          Vista global de regiones y servicios desplegados en la infraestructura Cloud
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-text-main">Infraestructura Global</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Vista global de regiones y servicios planificados en la infraestructura Cloud
+          </p>
+        </div>
+        <button
+          onClick={() => void load()}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-md bg-card border border-border text-xs text-text-main hover:border-primary transition-colors disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          Actualizar
+        </button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 text-[#DC2626] rounded-xl p-4 text-sm">
+          No se pudieron cargar las planificaciones: {error}
+        </div>
+      )}
+
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         {[
           { label: 'Regiones', value: regions.length, icon: Globe2 },
           { label: 'Zonas de disponibilidad', value: totalAzs, icon: Layers },
-          { label: 'Servicios desplegados', value: totalServices, icon: Server },
+          { label: 'Planificaciones', value: totalPlans, icon: ClipboardList },
+          { label: 'Servicios planificados', value: totalServices, icon: Server },
           { label: 'Regiones operativas', value: operational, icon: CheckCircle2 },
           { label: 'Requieren revisión', value: review, icon: AlertTriangle },
         ].map((kpi) => {
@@ -339,16 +404,43 @@ export default function Infraestructura() {
                       .map(([a, b], i) => {
                         const midX = (a.x + b.x) / 2;
                         const midY = (a.y + b.y) / 2 - height * 0.06;
+                        const d = `M${a.x},${a.y} Q${midX},${midY} ${b.x},${b.y}`;
+                        const dash = width * 0.004;
+                        const gap = width * 0.003;
+                        const dur = 3 + (i % 3) * 0.7;
                         return (
-                          <path
-                            key={i}
-                            d={`M${a.x},${a.y} Q${midX},${midY} ${b.x},${b.y}`}
-                            fill="none"
-                            stroke="#38BDF8"
-                            strokeWidth={width * 0.0011}
-                            strokeDasharray={`${width * 0.004} ${width * 0.003}`}
-                            opacity="0.55"
-                          />
+                          <g key={i} style={{ pointerEvents: 'none' }}>
+                            {/* Línea de guiones que fluye de A hacia B */}
+                            <path
+                              d={d}
+                              fill="none"
+                              stroke="#38BDF8"
+                              strokeWidth={width * 0.0011}
+                              strokeDasharray={`${dash} ${gap}`}
+                              opacity="0.65"
+                            >
+                              {!reduceMotion && (
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="0"
+                                  to={`${-(dash + gap)}`}
+                                  dur="0.9s"
+                                  repeatCount="indefinite"
+                                />
+                              )}
+                            </path>
+                            {/* Paquete de datos que recorre el arco */}
+                            {!reduceMotion && (
+                              <>
+                                <circle r={width * 0.0065} fill="#38BDF8" opacity="0.25">
+                                  <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={d} begin={`${i * 0.4}s`} />
+                                </circle>
+                                <circle r={width * 0.0028} fill="#E0F2FE">
+                                  <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={d} begin={`${i * 0.4}s`} />
+                                </circle>
+                              </>
+                            )}
+                          </g>
                         );
                       })}
 
@@ -444,7 +536,17 @@ export default function Infraestructura() {
                               strokeWidth={u * 0.22}
                               strokeDasharray={`${u * 0.9} ${u * 0.6}`}
                               opacity="0.85"
-                            />
+                            >
+                              {!reduceMotion && (
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="0"
+                                  to={`${-(u * 1.5)}`}
+                                  dur="1.2s"
+                                  repeatCount="indefinite"
+                                />
+                              )}
+                            </line>
                           ))}
                           <circle cx={center.x} cy={center.y} r={u * 1.1} fill={pin} stroke="white" strokeWidth={u * 0.2}>
                             <animate attributeName="r" values={`${u * 1.1};${u * 1.4};${u * 1.1}`} dur="2.4s" repeatCount="indefinite" />
@@ -494,7 +596,9 @@ export default function Infraestructura() {
                   />
                   <span>{statusConfig[focusedRegion.status].label}</span>
                   <span className="text-[#64748B]">·</span>
-                  <span>{focusedRegion.services.length} servicios</span>
+                  <span>{planOf(focusedRegion.id).services.length} servicios</span>
+                  <span className="text-[#64748B]">·</span>
+                  <span>{planOf(focusedRegion.id).plans} plan.</span>
                 </div>
                 <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8]">
                   {focusedRegion.azs.length} zonas de disponibilidad
@@ -520,54 +624,84 @@ export default function Infraestructura() {
         </div>
 
         {/* Regions list - Right */}
-        <div className="lg:col-span-2 flex flex-col">
-          <h2 className="text-sm font-semibold text-text-main px-1 mb-3">Regiones y servidores</h2>
-          <div className="space-y-3 lg:overflow-y-auto lg:pr-1 lg:h-[360px]">
-          {regions.map((region) => {
-            const cfg = statusConfig[region.status];
-            return (
-              <div
-                key={region.id}
-                className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border} ${region.id === regionId ? 'ring-2 ring-[#2563EB]' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${cfg.color}`} />
-                    <div>
-                      <p className="text-sm font-semibold text-text-main">{region.name}</p>
-                      <p className="text-[11px] text-text-secondary">{region.location}</p>
+        <div className="lg:col-span-2 flex flex-col min-w-0">
+          <div className="flex items-baseline justify-between px-1 mb-3">
+            <h2 className="text-sm font-semibold text-text-main">Regiones y servidores</h2>
+            <span className="text-[11px] text-text-secondary">{regions.length} regiones</span>
+          </div>
+          {/* p-1 deja espacio para que el aro de la región actual no se corte con el scroll */}
+          <div className="space-y-2.5 p-1 lg:overflow-y-auto lg:h-[360px]">
+            {regions.map((region) => {
+              const cfg = statusConfig[region.status];
+              const plan = planOf(region.id);
+              const isCurrent = region.id === regionId;
+              return (
+                <div
+                  key={region.id}
+                  className={`rounded-xl border p-3.5 ${cfg.bg} ${cfg.border} ${isCurrent ? 'ring-2 ring-[#2563EB]' : ''}`}
+                >
+                  {/* Encabezado: nombre + estado */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className={`mt-1.5 w-2 h-2 shrink-0 rounded-full ${cfg.color}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-text-main truncate">{region.name}</p>
+                        <p className="text-[11px] text-text-secondary truncate">
+                          {region.location} · {region.id}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
+                    <span
+                      className={`shrink-0 whitespace-nowrap text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text} border ${cfg.border}`}
+                    >
                       {cfg.label}
                     </span>
-                    {region.id === regionId ? (
-                      <span className="text-[10px] font-semibold text-[#2563EB]">Región actual</span>
+                  </div>
+
+                  {/* Servicios planificados */}
+                  <div className="flex flex-wrap items-center gap-1 mt-3 min-h-[22px]">
+                    {plan.services.map((svc) => (
+                      <span
+                        key={svc}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-card text-text-main border border-border"
+                      >
+                        <Server className="w-2.5 h-2.5 text-[#2563EB]" />
+                        {svc}
+                      </span>
+                    ))}
+                    {plan.services.length === 0 && (
+                      <span className="text-[11px] text-text-secondary">Sin planificaciones</span>
+                    )}
+                  </div>
+
+                  {/* Pie: resumen + acción, siempre en la misma posición */}
+                  <div className="flex items-center justify-between gap-3 mt-3 pt-2.5 border-t border-black/5 dark:border-white/10">
+                    <p className="text-[11px] text-text-secondary min-w-0 truncate">
+                      {plan.plans > 0 ? (
+                        <>
+                          {plan.plans} {plan.plans === 1 ? 'planificación' : 'planificaciones'} ·{' '}
+                          <span className="font-semibold text-text-main">{usd(plan.monthly)}/mes</span>
+                        </>
+                      ) : (
+                        <>{region.azs.length} zonas de disponibilidad</>
+                      )}
+                    </p>
+                    {isCurrent ? (
+                      <span className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-[#2563EB]">
+                        Región actual
+                      </span>
                     ) : (
                       <button
                         onClick={() => focusRegion(region.id)}
-                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#2563EB] text-white hover:bg-blue-700"
+                        className="shrink-0 whitespace-nowrap text-[10px] font-medium px-2.5 py-1 rounded-md bg-[#2563EB] text-white hover:bg-blue-700 transition-colors"
                       >
                         Seleccionar
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {region.services.map((svc) => (
-                    <span
-                      key={svc}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-card text-text-main border border-border"
-                    >
-                      <Server className="w-2.5 h-2.5 text-[#2563EB]" />
-                      {svc}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -606,18 +740,32 @@ export default function Infraestructura() {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-medium text-text-secondary">Servicios activos</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {region.services.map((svc) => (
-                    <div
-                      key={svc}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border text-sm"
-                    >
-                      <Server className="w-3.5 h-3.5 text-[#2563EB]" />
-                      <span className="font-medium text-text-main">{svc}</span>
-                    </div>
-                  ))}
+                <div className="flex items-baseline justify-between">
+                  <p className="text-xs font-medium text-text-secondary">Servicios planificados</p>
+                  <p className="text-[11px] text-text-secondary">
+                    {planOf(region.id).plans} {planOf(region.id).plans === 1 ? 'planificación' : 'planificaciones'}
+                    {planOf(region.id).plans > 0 && (
+                      <>
+                        {' '}· <span className="font-medium text-text-main">{usd(planOf(region.id).monthly)}/mes</span>
+                      </>
+                    )}
+                  </p>
                 </div>
+                {planOf(region.id).services.length === 0 ? (
+                  <p className="text-xs text-text-secondary">Esta región aún no tiene planificaciones.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {planOf(region.id).services.map((svc) => (
+                      <div
+                        key={svc}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-border text-sm"
+                      >
+                        <Server className="w-3.5 h-3.5 text-[#2563EB]" />
+                        <span className="font-medium text-text-main">{svc}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );

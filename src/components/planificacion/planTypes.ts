@@ -11,6 +11,8 @@ export interface Proposal {
   migration: string;
   selected: string[];
   createdAt: string;
+  /** Fecha de creación en ISO-8601 (la envía el backend; sirve para la tendencia de costos). */
+  createdAtIso?: string;
 }
 
 export const isProposalList = (v: unknown): v is Proposal[] =>

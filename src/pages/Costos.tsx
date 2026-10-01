@@ -1,6 +1,5 @@
-import { useState, type SetStateAction } from 'react';
-import { usePersistentState } from '../hooks/usePersistentState';
-import { DollarSign, TrendingUp, Server } from 'lucide-react';
+import { useCallback, useEffect, useState, type SetStateAction } from 'react';
+import { DollarSign, TrendingUp, Server, Loader2 } from 'lucide-react';
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
 import { regionLabel, type CostRow } from '../data/regionData';
@@ -11,34 +10,73 @@ import CostosForm, { type CostForm } from '../components/costos/CostosForm';
 import { SERVICE_OPTIONS } from '../components/costos/costoData';
 import CostosCharts from '../components/costos/CostosCharts';
 import CostosSummary from '../components/costos/CostosSummary';
+import { api } from '../api/client';
+import { fetchRegionCosts } from '../api/proposals';
 
-// Al cambiar de región se vuelve a montar con los costos de esa región (key)
 export default function Costos() {
   const { region } = useRegion();
-  return <CostosContent key={region.id} initialData={region.costTable} regionText={`${region.id} — ${regionLabel(region)}`} />;
+  return (
+    <CostosContent
+      key={region.id}
+      regionId={region.id}
+      regionText={`${region.id} — ${regionLabel(region)}`}
+    />
+  );
 }
 
-const isCostRow = (r: unknown): r is CostRow =>
-  typeof r === 'object' &&
-  r !== null &&
-  ['id', 'quantity', 'hours', 'rate', 'monthly'].every((k) => typeof (r as Record<string, unknown>)[k] === 'number') &&
-  typeof (r as Record<string, unknown>).service === 'string';
-
-const isRowsByRegion = (v: unknown): v is Record<string, CostRow[]> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((rows) => Array.isArray(rows) && rows.every(isCostRow));
-
-function CostosContent({ initialData, regionText }: { initialData: CostRow[]; regionText: string }) {
+function CostosContent({ regionId, regionText }: { regionId: string; regionText: string }) {
   const { notify } = useNotifications();
   const { region } = useRegion();
 
-  // Las ediciones de la tabla se guardan por región; si no hay ediciones, se usan los datos base.
-  const [storedRows, setStoredRows] = usePersistentState<Record<string, CostRow[]>>('costos-rows', {}, isRowsByRegion);
-  const rows = storedRows[region.id] ?? initialData;
-  const setRows = (update: SetStateAction<CostRow[]>) =>
-    setStoredRows((prev) => {
-      const current = prev[region.id] ?? initialData;
-      return { ...prev, [region.id]: typeof update === 'function' ? update(current) : update };
+  const [rows, setRowsState] = useState<CostRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState('planning');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchRegionCosts(regionId);
+      setRowsState(data.rows || []);
+      setSource(data.source || 'planning');
+    } catch (e) {
+      setRowsState([]);
+      notify({
+        type: 'error',
+        title: 'No se pudieron cargar los costos',
+        message: e instanceof Error ? e.message : 'Error del backend',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [regionId, notify]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const persist = async (next: CostRow[]) => {
+    try {
+      await api(`/costs/${regionId}/rows`, {
+        method: 'PUT',
+        body: JSON.stringify({ rows: next }),
+      });
+      setSource('custom');
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: 'No se guardaron los costos en Supabase',
+        message: e instanceof Error ? e.message : 'Error del backend',
+      });
+    }
+  };
+
+  const setRows = (update: SetStateAction<CostRow[]>) => {
+    setRowsState((prev) => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      void persist(next);
+      return next;
     });
+  };
 
   const [form, setForm] = useState<CostForm>({ service: 'EC2', quantity: 1, hours: 730, rate: 0.0528 });
 
@@ -51,7 +89,7 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
       prev.map((r) => {
         if (r.id !== id) return r;
         const updated = { ...r, [field]: value };
-        if (field === 'quantity' || field === 'hours') {
+        if (field === 'quantity' || field === 'hours' || field === 'rate') {
           updated.monthly = +(updated.quantity * updated.hours * updated.rate).toFixed(2);
         }
         return updated;
@@ -61,23 +99,43 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
 
   const handleServiceChange = (serviceName: string) => {
     const opt = SERVICE_OPTIONS.find((s) => s.name === serviceName);
-    setForm((prev) => ({ ...prev, service: serviceName, rate: opt?.rate ?? 0.01, hours: opt?.hours ?? 730 }));
+    setForm((prev) => ({
+      ...prev,
+      service: serviceName,
+      rate: opt?.rate ?? 0.01,
+      hours: opt?.hours ?? 730,
+    }));
   };
 
   const addRow = () => {
-    const newId = Math.max(...rows.map((r) => r.id), 0) + 1;
+    const newId = Math.max(0, ...rows.map((r) => r.id)) + 1;
     const monthly = +(form.quantity * form.hours * form.rate).toFixed(2);
-    setRows((prev) => [...prev, { id: newId, service: form.service, quantity: form.quantity, hours: form.hours, rate: form.rate, monthly }]);
+    setRows((prev) => [
+      ...prev,
+      {
+        id: newId,
+        service: form.service,
+        quantity: form.quantity,
+        hours: form.hours,
+        rate: form.rate,
+        monthly,
+      },
+    ]);
     notify({ type: 'success', title: 'Recurso agregado', message: `${form.service} — $${monthly.toFixed(2)}/mes.` });
   };
 
   const removeRow = (id: number) => {
     const removed = rows.find((r) => r.id === id);
     setRows((prev) => prev.filter((r) => r.id !== id));
-    if (removed) notify({ type: 'info', title: 'Recurso eliminado', message: `Se quitó ${removed.service} de la tabla de costos.` });
+    if (removed) {
+      notify({
+        type: 'info',
+        title: 'Recurso eliminado',
+        message: `Se quitó ${removed.service} de la tabla de costos.`,
+      });
+    }
   };
 
-  // La distribución sale de las filas actuales (se actualiza al editar la tabla)
   const costByService = Object.values(
     rows.reduce<Record<string, { name: string; value: number }>>((acc, r) => {
       acc[r.service] = { name: r.service, value: +((acc[r.service]?.value ?? 0) + r.monthly).toFixed(2) };
@@ -88,8 +146,7 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
     ...c,
     percentage: totalMonthly ? Math.round((c.value / totalMonthly) * 100) : 0,
   }));
-
-  const barData = rows.map((r) => ({ name: r.service, monthly: r.monthly, annual: +(r.monthly * 12).toFixed(2) }));
+  const barData = costByService.map((c) => ({ name: c.name, monthly: c.value, annual: +(c.value * 12).toFixed(2) }));
 
   return (
     <div className="space-y-6">
@@ -97,49 +154,75 @@ function CostosContent({ initialData, regionText }: { initialData: CostRow[]; re
         <div>
           <h1 className="text-xl font-semibold text-text-main">Costos</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Análisis financiero y calculadora de costos de la infraestructura Cloud en{' '}
+            Desde planificaciones (Supabase). Región:{' '}
             <span className="font-medium text-text-main">{regionText}</span>
+            {source ? ` · fuente: ${source}` : ''}
           </p>
         </div>
         <ExportMenu getReport={() => buildCostReport(region, rows)} />
       </div>
 
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <Loader2 className="w-4 h-4 animate-spin" /> Cargando costos…
+        </div>
+      )}
+
+      {!loading && rows.length === 0 && (
+        <div className="bg-card border border-border rounded-xl p-5 text-sm text-text-secondary">
+          No hay costos para esta región. En <strong>Planificación</strong> crea una propuesta y pulsa{' '}
+          <strong>Aplicar a costos</strong>, o agrega recursos abajo.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Costo mensual', value: `$${totalMonthly.toFixed(2)}`, icon: DollarSign, color: 'text-[#F59E0B]' },
-          { label: 'Costo anual', value: `$${totalAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: 'text-[#F59E0B]' },
+          {
+            label: 'Costo anual',
+            value: `$${totalAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            icon: TrendingUp,
+            color: 'text-[#F59E0B]',
+          },
           { label: 'Servicios utilizados', value: rows.length, icon: Server, color: 'text-[#2563EB]' },
           { label: 'Recurso de mayor costo', value: highest?.service || '—', icon: DollarSign, color: 'text-[#DC2626]' },
         ].map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
+            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4 min-w-0">
               <Icon className={`w-4 h-4 ${kpi.color} mb-2`} />
-              <p className="text-xl font-semibold text-text-main">{kpi.value}</p>
-              <p className="text-xs text-text-secondary mt-0.5">{kpi.label}</p>
+              <p className="text-xl font-semibold text-text-main truncate">{kpi.value}</p>
+              <p className="text-xs text-text-secondary mt-0.5 truncate">{kpi.label}</p>
             </div>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
-        <CostosTable rows={rows} totalMonthly={totalMonthly} onUpdateRow={updateRow} onRemoveRow={removeRow} />
-        <CostosForm
-          form={form}
-          onServiceChange={handleServiceChange}
-          onFieldChange={(field, value) => setForm((prev) => ({ ...prev, [field]: value }))}
-          onAdd={addRow}
-        />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* En pantallas grandes la tarjeta toma el alto de la columna derecha (sin espacio vacío debajo) */}
+        <div className="xl:col-span-2 min-w-0 xl:relative xl:min-h-[420px]">
+          <div className="xl:absolute xl:inset-0">
+            <CostosTable rows={rows} totalMonthly={totalMonthly} onUpdateRow={updateRow} onRemoveRow={removeRow} />
+          </div>
+        </div>
+        <div className="space-y-4 min-w-0">
+          <CostosForm
+            form={form}
+            onServiceChange={handleServiceChange}
+            onFieldChange={(field, value) => setForm((prev) => ({ ...prev, [field]: value }))}
+            onAdd={addRow}
+          />
+          <CostosSummary
+            totalMonthly={totalMonthly}
+            totalAnnual={totalAnnual}
+            highestService={highest?.service}
+            costDistribution={costDistribution}
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CostosCharts costDistribution={costDistribution} barData={barData} />
-        <CostosSummary
-          totalMonthly={totalMonthly}
-          totalAnnual={totalAnnual}
-          highestService={highest?.service ?? ''}
-          costDistribution={costDistribution}
-        />
       </div>
     </div>
   );
