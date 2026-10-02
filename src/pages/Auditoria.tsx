@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MapPin, LocateFixed, Search, Loader2, AlertTriangle, ShieldCheck, Hand, Globe } from 'lucide-react';
+import { MapPin, LocateFixed, Search, Loader2, AlertTriangle, ShieldCheck, Hand, Globe, ScrollText } from 'lucide-react';
+import AuditEvents from '../components/auditoria/AuditEvents';
+import { usePersistentState } from '../hooks/usePersistentState';
 import LocationMap from '../components/auditoria/LocationMap';
 import { fetchIpLocation, placeFromIp } from '../api/geo';
 import {
@@ -27,7 +29,53 @@ type PlaceState = 'idle' | 'loading' | 'ready' | 'error';
 
 const formatAccuracy = (m: number) => (m >= 1000 ? `± ${Math.round(m / 1000)} km` : `± ${Math.round(m)} m`);
 
+type AuditTab = 'events' | 'location';
+const isTab = (v: unknown): v is AuditTab => v === 'events' || v === 'location';
+
 export default function Auditoria() {
+  const [tab, setTab] = usePersistentState<AuditTab>('audit-tab', 'events', isTab);
+  const tabs: { id: AuditTab; label: string; icon: typeof MapPin }[] = [
+    { id: 'events', label: 'Eventos', icon: ScrollText },
+    { id: 'location', label: 'Ubicación de acceso', icon: MapPin },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-text-main">Auditoría</h1>
+        <p className="text-sm text-text-secondary mt-0.5">
+          {tab === 'events'
+            ? 'Registro de actividad estilo CloudTrail: planificaciones guardadas en el backend y eventos simulados de seguridad y configuración'
+            : 'Ubicación desde donde se accede al sistema: coordenadas (GPS o aproximadas por IP), distrito y dirección'}
+        </p>
+      </div>
+      <div role="tablist" aria-label="Secciones de auditoría" className="flex gap-1 border-b border-border">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 -mb-px text-sm font-medium border-b-2 transition-colors ${active ? 'border-[#2563EB] text-[#2563EB]' : 'border-transparent text-text-secondary hover:text-text-main'
+                }`}
+            >
+              <Icon className="w-4 h-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+      {tab === 'events' ? <AuditEvents /> : <UbicacionAcceso />}
+    </div>
+  );
+}
+
+/** Ubicación de acceso (GPS / IP / manual). Sin cambios de funcionamiento; ahora es una pestaña. */
+function UbicacionAcceso() {
   const [position, setPosition] = useState<AuditPosition | null>(null);
   const [gpsState, setGpsState] = useState<GpsState>('locating');
   const [gpsError, setGpsError] = useState<GeoError | null>(null);
@@ -136,13 +184,6 @@ export default function Auditoria() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-main">Auditoría</h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          Ubicación desde donde se accede al sistema: coordenadas (GPS o aproximadas por IP), distrito y dirección
-        </p>
-      </div>
-
       {gpsError && (gpsState === 'error' || isIp) && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 flex gap-3">
           <AlertTriangle className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
@@ -202,10 +243,10 @@ export default function Auditoria() {
               {position && (
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${isGps
-                      ? 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30'
-                      : isIp
-                        ? 'bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] border-blue-200 dark:border-blue-500/30'
-                        : 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30'
+                    ? 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30'
+                    : isIp
+                      ? 'bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] border-blue-200 dark:border-blue-500/30'
+                      : 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30'
                     }`}
                 >
                   {isGps ? <ShieldCheck className="w-3 h-3" /> : isIp ? <Globe className="w-3 h-3" /> : <Hand className="w-3 h-3" />}

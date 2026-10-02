@@ -1,5 +1,10 @@
-import { api } from './client';
 import type { HealthStatus } from '../data/regionData';
+import { getMockSecurityReport } from '../data/securityMock';
+
+/**
+ * Seguridad: datos SIMULADOS (mock). No hay conexión con AWS ni con el backend.
+ * Los tipos se mantienen para que el Dashboard y los reportes sigan funcionando igual.
+ */
 
 export interface ComplianceItem {
     name: string;
@@ -16,13 +21,13 @@ export interface SecurityCheck {
     label: string;
     status: CheckStatus;
     detail: string;
-    source: 'platform' | 'access' | 'planning' | 'compliance';
+    source: string;
     weight: number;
     recommendation: string | null;
 }
 
 export interface SecurityGroup {
-    id: 'platform' | 'access' | 'planning' | 'compliance';
+    id: string;
     label: string;
     status: CheckStatus;
     checks: SecurityCheck[];
@@ -68,6 +73,5 @@ export interface SecurityReport {
 }
 
 export async function fetchSecurityReport(regionId: string): Promise<SecurityReport> {
-    const data = await api<{ report: SecurityReport }>(`/security/${encodeURIComponent(regionId)}`);
-    return data.report;
+    return getMockSecurityReport(regionId);
 }
