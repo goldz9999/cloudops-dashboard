@@ -26,6 +26,29 @@ export async function recommendRegion(lat: number, lon: number): Promise<RegionR
     );
 }
 
+export interface IpLocation {
+    ip: string | null;
+    lat: number;
+    lon: number;
+    /** Incertidumbre en metros (la ubicación por IP es de nivel ciudad) */
+    accuracy: number;
+    city: string | null;
+    region: string | null;
+    country: string | null;
+    provider: string;
+}
+
+/** Ubicación aproximada por IP (respaldo cuando el GPS no está disponible). La resuelve el backend. */
+export async function fetchIpLocation(): Promise<IpLocation> {
+    return api<IpLocation>('/geo/ip');
+}
+
+/** Lugar legible a partir de una ubicación por IP: ciudad como "distrito" aproximado, sin dirección. */
+export function placeFromIp(loc: IpLocation): Place {
+    const area = [loc.region, loc.country].filter((x, i, arr): x is string => !!x && x !== loc.city && arr.indexOf(x) === i);
+    return { district: loc.city, address: null, area: area.length ? area.join(', ') : null };
+}
+
 export function getDevicePosition(): Promise<GeolocationPosition> {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {

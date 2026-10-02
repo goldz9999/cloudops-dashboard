@@ -624,8 +624,8 @@ export default function Infraestructura() {
         </div>
 
         {/* Regions list - Right */}
-        <div className="lg:col-span-2 flex flex-col min-w-0">
-          <div className="flex items-baseline justify-between px-1 mb-3">
+        <div className="lg:col-span-2 flex flex-col min-w-0 bg-card rounded-xl border border-border p-4">
+          <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-sm font-semibold text-text-main">Regiones y servidores</h2>
             <span className="text-[11px] text-text-secondary">{regions.length} regiones</span>
           </div>

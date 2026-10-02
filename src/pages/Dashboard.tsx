@@ -11,6 +11,8 @@ import {
   RefreshCw,
   Loader2,
   ClipboardList,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import {
   PieChart,
@@ -23,7 +25,8 @@ import {
 import { services } from '../data/mockData';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRegion } from '../context/useRegion';
-import { fetchProposals } from '../api/proposals';
+import { archiveRegionProposals, fetchArchivedCounts, fetchProposals, restoreRegionProposals } from '../api/proposals';
+import { useNotifications } from '../context/useNotifications';
 import type { Proposal } from '../components/planificacion/planTypes';
 import { fetchSecurityReport, type SecurityReport } from '../api/security';
 import { serviceCost } from '../utils/chartData';
@@ -68,24 +71,31 @@ interface PlanSummary {
 
 export default function Dashboard() {
   const { region, regionId, regions, setRegionId, openRegionsModal } = useRegion();
+  const { notify } = useNotifications();
 
   const [allProposals, setAllProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [security, setSecurity] = useState<SecurityReport | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
+  const [archivedCounts, setArchivedCounts] = useState<Record<string, number>>({});
+  const [confirm, setConfirm] = useState<'clean' | 'restore' | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [props, sec] = await Promise.all([
+      const [props, sec, archived] = await Promise.all([
         fetchProposals(),
         // la seguridad es secundaria: si falla no rompe el resto del dashboard
         fetchSecurityReport(regionId).catch(() => null),
+        // el archivo también es secundario: si falla solo se oculta el botón Restaurar
+        fetchArchivedCounts().catch(() => ({}) as Record<string, number>),
       ]);
       setAllProposals(props);
       setSecurity(sec);
+      setArchivedCounts(archived);
       setUpdatedAt(new Date());
     } catch (e) {
       setAllProposals([]);
@@ -121,6 +131,40 @@ export default function Dashboard() {
   );
 
   const hasPlanning = plans.length > 0;
+  const archivedInRegion = archivedCounts[regionId] ?? 0;
+
+  const runCleanup = async () => {
+    const action = confirm;
+    if (!action) return;
+    setBusy(true);
+    try {
+      if (action === 'clean') {
+        const moved = await archiveRegionProposals(regionId);
+        notify({
+          type: 'success',
+          title: 'Datos limpiados',
+          message: `${moved} ${moved === 1 ? 'planificación archivada' : 'planificaciones archivadas'} de ${regionId}. Puedes restaurarlas cuando quieras.`,
+        });
+      } else {
+        const restored = await restoreRegionProposals(regionId);
+        notify({
+          type: 'success',
+          title: 'Datos restaurados',
+          message: `${restored} ${restored === 1 ? 'planificación recargada' : 'planificaciones recargadas'} en ${regionId}.`,
+        });
+      }
+      setConfirm(null);
+      await load();
+    } catch (e) {
+      notify({
+        type: 'error',
+        title: action === 'clean' ? 'No se pudo limpiar' : 'No se pudo restaurar',
+        message: e instanceof Error ? e.message : 'Error de conexión con el backend',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Por servicio: cuántas planificaciones lo usan y cuánto cuesta en total
   const byService = useMemo(() => {
@@ -149,7 +193,8 @@ export default function Dashboard() {
     return list.map((s) => ({ name: s.service, value: s.monthly, percentage: Math.round((s.monthly / total) * 100) }));
   }, [byService]);
 
-  const securityMeasured = (security?.score ?? 0) > 0;
+  const securityMeasured = security?.awsConnected === true; // IAM / MFA / datos: requieren AWS
+  const scoreMeasured = (security?.score ?? 0) > 0; // el puntaje se calcula con datos reales
   const kpiData = {
     planificaciones: plans.length,
     servicesUsed: byService.size,
@@ -157,7 +202,7 @@ export default function Dashboard() {
     monthlyCost,
     annualCost,
     // Solo se muestra lo que el backend mide de verdad (puntaje > 0 = cuenta AWS conectada).
-    securityScore: securityMeasured ? security!.score : (null as number | null),
+    securityScore: scoreMeasured ? security!.score : (null as number | null),
     // Sin cuenta AWS no existe una fuente real de disponibilidad: no se inventa.
     availability: null as number | null,
   };
@@ -238,9 +283,87 @@ export default function Dashboard() {
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
             Actualizar
           </button>
+          <button
+            onClick={() => setConfirm('clean')}
+            disabled={loading || busy || !hasPlanning}
+            title={hasPlanning ? 'Archivar las planificaciones de esta región' : 'No hay planificaciones para limpiar'}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-card border border-border text-text-main hover:border-alerts hover:text-alerts transition-colors disabled:opacity-50 disabled:hover:border-border disabled:hover:text-text-main"
+          >
+            <Archive className="w-3.5 h-3.5" />
+            Limpiar datos
+          </button>
+          {archivedInRegion > 0 && (
+            <button
+              onClick={() => setConfirm('restore')}
+              disabled={loading || busy}
+              title="Volver a cargar las planificaciones archivadas de esta región"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-card border border-border text-text-main hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+            >
+              <ArchiveRestore className="w-3.5 h-3.5" />
+              Restaurar ({archivedInRegion})
+            </button>
+          )}
           <ExportMenu getReport={getReport} />
         </div>
       </div>
+
+      {confirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !busy && setConfirm(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md bg-card border border-border rounded-xl p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              {confirm === 'clean' ? (
+                <Archive className="w-5 h-5 text-alerts" />
+              ) : (
+                <ArchiveRestore className="w-5 h-5 text-primary" />
+              )}
+              <h3 className="text-base font-semibold text-text-main">
+                {confirm === 'clean' ? 'Limpiar datos del Dashboard' : 'Restaurar datos archivados'}
+              </h3>
+            </div>
+            <p className="text-sm text-text-secondary">
+              {confirm === 'clean' ? (
+                <>
+                  Las <strong className="text-text-main">{plans.length}</strong>{' '}
+                  {plans.length === 1 ? 'planificación' : 'planificaciones'} de{' '}
+                  <strong className="text-text-main">{region.id}</strong> dejarán de verse en el Dashboard. No se borran:
+                  se guardan en el archivo y puedes recargarlas con «Restaurar».
+                </>
+              ) : (
+                <>
+                  Se volverán a cargar <strong className="text-text-main">{archivedInRegion}</strong>{' '}
+                  {archivedInRegion === 1 ? 'planificación archivada' : 'planificaciones archivadas'} de{' '}
+                  <strong className="text-text-main">{region.id}</strong>.
+                </>
+              )}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirm(null)}
+                disabled={busy}
+                className="px-3 py-1.5 rounded-md border border-border text-sm text-text-main hover:border-slate-400 transition-colors disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void runCleanup()}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {confirm === 'clean' ? 'Limpiar' : 'Restaurar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 text-alerts rounded-xl p-4 text-sm">

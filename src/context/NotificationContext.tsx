@@ -25,7 +25,8 @@ const isNotificationList = (v: unknown): v is AppNotification[] =>
 
 /** Las alertas automáticas de región (clave "alert:…") no se guardan: se regeneran al abrir la app. */
 const isAutoAlert = (n: AppNotification) => n.key?.startsWith('alert:') ?? false;
-const MAX_TOASTS = 4;
+/** Máximo de avisos visibles a la vez: al llegar uno nuevo, el más antiguo desaparece. */
+const MAX_TOASTS = 3;
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(() =>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MapPin, LocateFixed, Search, Loader2, AlertTriangle, ShieldCheck, Hand } from 'lucide-react';
+import { MapPin, LocateFixed, Search, Loader2, AlertTriangle, ShieldCheck, Hand, Globe } from 'lucide-react';
 import LocationMap from '../components/auditoria/LocationMap';
+import { fetchIpLocation, placeFromIp } from '../api/geo';
 import {
   GeoError,
   getDevicePosition,
@@ -16,11 +17,15 @@ interface AuditPosition {
   /** Precisión en metros; null en ubicaciones manuales */
   accuracy: number | null;
   timestamp: number;
-  source: 'gps' | 'manual';
+  source: 'gps' | 'manual' | 'ip';
+  /** Ciudad/región ya resuelta (solo ubicaciones por IP; no se consulta Nominatim) */
+  place?: Place;
 }
 
 type GpsState = 'locating' | 'ready' | 'error';
 type PlaceState = 'idle' | 'loading' | 'ready' | 'error';
+
+const formatAccuracy = (m: number) => (m >= 1000 ? `± ${Math.round(m / 1000)} km` : `± ${Math.round(m)} m`);
 
 export default function Auditoria() {
   const [position, setPosition] = useState<AuditPosition | null>(null);
@@ -35,6 +40,25 @@ export default function Auditoria() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  /** Ubicación aproximada por IP (nivel ciudad). Devuelve false si no se pudo obtener. */
+  const locateByIp = useCallback(async (): Promise<boolean> => {
+    try {
+      const loc = await fetchIpLocation();
+      setPosition({
+        lat: loc.lat,
+        lon: loc.lon,
+        accuracy: loc.accuracy,
+        timestamp: Date.now(),
+        source: 'ip',
+        place: placeFromIp(loc),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // GPS primero; si no se puede usar (permiso bloqueado, PC del aula…) se cae a la ubicación por IP
   const locate = useCallback(() => {
     setGpsState('locating');
     setGpsError(null);
@@ -43,11 +67,19 @@ export default function Auditoria() {
         setPosition({ ...p, source: 'gps' });
         setGpsState('ready');
       })
-      .catch((err: unknown) => {
+      .catch(async (err: unknown) => {
         setGpsError(err instanceof GeoError ? err : new GeoError('unavailable', 'No se pudo obtener la ubicación.'));
-        setGpsState('error');
+        const ok = await locateByIp();
+        setGpsState(ok ? 'ready' : 'error');
       });
-  }, []);
+  }, [locateByIp]);
+
+  const handleIpLocation = async () => {
+    setGpsState('locating');
+    const ok = await locateByIp();
+    if (!ok) setGpsError(new GeoError('unavailable', 'No se pudo estimar la ubicación por IP.'));
+    setGpsState(ok ? 'ready' : 'error');
+  };
 
   useEffect(() => {
     locate();
@@ -56,6 +88,12 @@ export default function Auditoria() {
   // Distrito y dirección a partir de las coordenadas actuales
   useEffect(() => {
     if (!position) return;
+    // Por IP solo hay ciudad/región: no se pide dirección a Nominatim con coordenadas aproximadas
+    if (position.source === 'ip' && position.place) {
+      setPlace(position.place);
+      setPlaceState('ready');
+      return;
+    }
     const controller = new AbortController();
     setPlaceState('loading');
     reverseGeocode(position.lat, position.lon, controller.signal)
@@ -94,29 +132,36 @@ export default function Auditoria() {
   };
 
   const isGps = position?.source === 'gps';
+  const isIp = position?.source === 'ip';
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-text-main">Auditoría</h1>
         <p className="text-sm text-text-secondary mt-0.5">
-          Ubicación desde donde se accede al sistema: coordenadas GPS, distrito y dirección
+          Ubicación desde donde se accede al sistema: coordenadas (GPS o aproximadas por IP), distrito y dirección
         </p>
       </div>
 
-      {gpsState === 'error' && gpsError && (
+      {gpsError && (gpsState === 'error' || isIp) && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 flex gap-3">
           <AlertTriangle className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
           <div className="text-sm text-text-main space-y-2">
             <p className="font-semibold">{gpsError.message}</p>
-            {gpsError.code === 'denied' && (
+            {isIp && (
+              <p className="text-text-secondary">
+                Se muestra una ubicación aproximada por IP (nivel ciudad, puede estar a varios kilómetros). Para mayor
+                precisión, busca tu dirección o haz click en el mapa.
+              </p>
+            )}
+            {!isIp && gpsError.code === 'denied' && (
               <p className="text-text-secondary">
                 Para activarlo: toca el candado de la barra de direcciones → Ubicación → Permitir, y pulsa
                 «Reintentar». Si tu dispositivo no te deja activarlo, ubica el punto manualmente con el buscador o
                 haciendo click en el mapa.
               </p>
             )}
-            {gpsError.code !== 'denied' && (
+            {!isIp && gpsError.code !== 'denied' && (
               <p className="text-text-secondary">
                 Puedes reintentar o ubicar el punto manualmente con el buscador o haciendo click en el mapa.
               </p>
@@ -127,7 +172,7 @@ export default function Auditoria() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#2563EB] text-white text-xs font-medium hover:bg-blue-700"
             >
               <LocateFixed className="w-3.5 h-3.5" />
-              Reintentar
+              Reintentar GPS
             </button>
           </div>
         </div>
@@ -156,14 +201,15 @@ export default function Auditoria() {
               <h2 className="text-sm font-semibold text-text-main">Ubicación actual</h2>
               {position && (
                 <span
-                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                    isGps
+                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${isGps
                       ? 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30'
-                      : 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30'
-                  }`}
+                      : isIp
+                        ? 'bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] border-blue-200 dark:border-blue-500/30'
+                        : 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30'
+                    }`}
                 >
-                  {isGps ? <ShieldCheck className="w-3 h-3" /> : <Hand className="w-3 h-3" />}
-                  {isGps ? 'GPS del dispositivo' : 'Manual, no verificada por GPS'}
+                  {isGps ? <ShieldCheck className="w-3 h-3" /> : isIp ? <Globe className="w-3 h-3" /> : <Hand className="w-3 h-3" />}
+                  {isGps ? 'GPS del dispositivo' : isIp ? 'Aproximada por IP' : 'Manual, no verificada por GPS'}
                 </span>
               )}
             </div>
@@ -175,7 +221,7 @@ export default function Auditoria() {
             ) : (
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-[11px] text-text-secondary">Distrito</dt>
+                  <dt className="text-[11px] text-text-secondary">{isIp ? 'Ciudad (aproximada)' : 'Distrito'}</dt>
                   <dd className="text-base font-semibold text-text-main">
                     {placeState === 'loading' && <span className="text-text-secondary text-sm">Consultando…</span>}
                     {placeState === 'error' && <span className="text-text-secondary text-sm">No disponible</span>}
@@ -189,7 +235,7 @@ export default function Auditoria() {
                   <dt className="text-[11px] text-text-secondary">Dirección</dt>
                   <dd className="text-text-main">
                     {placeState === 'ready'
-                      ? (place?.address ?? <span className="text-text-secondary">No disponible para este punto (solo distrito)</span>)
+                      ? (place?.address ?? <span className="text-text-secondary">{isIp ? 'No disponible con ubicación por IP (solo ciudad)' : 'No disponible para este punto (solo distrito)'}</span>)
                       : <span className="text-text-secondary">—</span>}
                   </dd>
                 </div>
@@ -205,7 +251,7 @@ export default function Auditoria() {
                   <div>
                     <dt className="text-[11px] text-text-secondary">Precisión</dt>
                     <dd className="text-text-main">
-                      {position.accuracy != null ? `± ${Math.round(position.accuracy)} m` : '—'}
+                      {position.accuracy != null ? formatAccuracy(position.accuracy) : '—'}
                     </dd>
                   </div>
                   <div>
@@ -216,21 +262,32 @@ export default function Auditoria() {
               </dl>
             )}
 
-            <button
-              type="button"
-              onClick={locate}
-              disabled={gpsState === 'locating'}
-              className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-text-main hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-60"
-            >
-              {gpsState === 'locating' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
-              Actualizar con GPS
-            </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={locate}
+                disabled={gpsState === 'locating'}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-text-main hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-60"
+              >
+                {gpsState === 'locating' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
+                Actualizar con GPS
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleIpLocation()}
+                disabled={gpsState === 'locating'}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-text-main hover:bg-slate-50 dark:hover:bg-slate-800/50 disabled:opacity-60"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Usar ubicación aproximada (IP)
+              </button>
+            </div>
           </div>
 
           <div className="bg-card rounded-xl border border-border p-4">
             <h2 className="text-sm font-semibold text-text-main mb-1">Ubicar manualmente</h2>
             <p className="text-[11px] text-text-secondary mb-3">
-              Úsalo si el GPS no está disponible. La ubicación quedará marcada como no verificada.
+              Úsalo si quieres una ubicación más precisa que la de IP. Quedará marcada como no verificada.
             </p>
             <form onSubmit={runSearch} className="flex gap-2">
               <input

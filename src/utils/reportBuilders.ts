@@ -1,8 +1,8 @@
+import type { SecurityReport } from '../api/security';
 import { services as catalog } from '../data/mockData';
 import {
   regionLabel,
   type CostRow,
-  type HealthStatus,
   type RegionData,
   type RegionSummary,
 } from '../data/regionData';
@@ -11,11 +11,6 @@ import type { ReportData } from './exportReport';
 const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const usdWhole = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
-const healthLabel: Record<HealthStatus, string> = {
-  healthy: 'Saludable',
-  review: 'Revisar',
-  issue: 'Problema',
-};
 
 function costDistribution(rows: CostRow[]) {
   const total = rows.reduce((s, r) => s + r.monthly, 0);
@@ -94,24 +89,18 @@ export function buildDashboardReport(region: RegionData, summary: RegionSummary)
   };
 }
 
-export function buildSecurityReport(region: RegionData): ReportData {
+export function buildSecurityReport(region: RegionData, report?: SecurityReport | null): ReportData {
+  const label: Record<string, string> = { healthy: 'Correcto', review: 'Revisar', issue: 'Problema', unknown: 'Sin datos' };
   return {
     title: 'Reporte de seguridad',
     slug: 'seguridad',
     regionId: region.id,
     regionText: regionLabel(region),
-    kpis: [{ label: 'Puntaje de seguridad', value: `${region.securityScore} %` }],
-    sections: [
-      {
-        title: 'Estado de seguridad',
-        columns: ['Área', 'Estado'],
-        rows: [
-          ['IAM', healthLabel[region.security.iam]],
-          ['Protección de datos', healthLabel[region.security.dataProtection]],
-          ['Protección de cuentas', healthLabel[region.security.accountProtection]],
-          ['Cumplimiento', healthLabel[region.security.compliance]],
-        ],
-      },
-    ],
+    kpis: [{ label: 'Puntaje de seguridad', value: report && report.score > 0 ? `${report.score} %` : 'Sin datos' }],
+    sections: (report?.groups ?? []).map((g) => ({
+      title: g.label,
+      columns: ['Control', 'Estado', 'Detalle'],
+      rows: g.checks.map((c) => [c.label, label[c.status], c.detail]),
+    })),
   };
 }

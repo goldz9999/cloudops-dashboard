@@ -16,7 +16,9 @@ import {
   fetchProposals,
 } from '../api/proposals';
 import {
+  fetchIpLocation,
   getDevicePosition,
+  placeFromIp,
   recommendRegion,
   reverseGeocode,
   type Place,
@@ -98,11 +100,25 @@ export default function Planificacion() {
   const detectLocationAndRecommend = async () => {
     setLocating(true);
     try {
-      const pos = await getDevicePosition();
-      const { latitude: lat, longitude: lon } = pos.coords;
+      let lat: number;
+      let lon: number;
+      let ipPlace: Place | null = null;
+      let viaIp = false;
+      try {
+        const pos = await getDevicePosition();
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      } catch {
+        // Sin GPS (permiso bloqueado, PC del aula…): ubicación aproximada por IP
+        const ip = await fetchIpLocation();
+        lat = ip.lat;
+        lon = ip.lon;
+        ipPlace = placeFromIp(ip);
+        viaIp = true;
+      }
 
       const [placeRes, rec] = await Promise.all([
-        reverseGeocode(lat, lon),
+        ipPlace ?? reverseGeocode(lat, lon),
         recommendRegion(lat, lon),
       ]);
 
@@ -114,7 +130,7 @@ export default function Planificacion() {
       notify({
         type: 'success',
         title: 'Región recomendada',
-        message: rec.message,
+        message: viaIp ? `${rec.message} (ubicación aproximada por IP)` : rec.message,
       });
     } catch (e) {
       notify({
@@ -123,7 +139,7 @@ export default function Planificacion() {
         message:
           e instanceof Error
             ? e.message
-            : 'Permite el acceso a la ubicación en el navegador e inténtalo de nuevo.',
+            : 'No se pudo usar el GPS ni la ubicación por IP. Inténtalo de nuevo.',
       });
     } finally {
       setLocating(false);
@@ -230,7 +246,7 @@ export default function Planificacion() {
         <h1 className="text-xl font-semibold text-text-main">Planificación Cloud</h1>
         <p className="text-sm text-text-secondary mt-0.5">
           Las propuestas se guardan en Supabase y alimentan Costos y el Dashboard. La región se
-          recomienda según tu ubicación (GPS).
+          recomienda según tu ubicación (GPS o, si no está disponible, aproximada por IP).
         </p>
         {loading && <p className="text-xs text-text-secondary mt-1">Cargando propuestas…</p>}
       </div>
@@ -257,8 +273,8 @@ export default function Planificacion() {
               </p>
             ) : (
               <p className="text-xs text-text-secondary mt-0.5">
-                Usa el GPS del dispositivo para sugerir la región AWS más cercana (ej. São Paulo
-                desde Perú).
+                Usa el GPS del dispositivo (o tu IP si no está disponible) para sugerir la región AWS
+                más cercana (ej. São Paulo desde Perú).
               </p>
             )}
           </div>

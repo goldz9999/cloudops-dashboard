@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useNotifications } from '../../context/useNotifications';
 import type { Toast } from '../../context/notificationContextValue';
@@ -10,10 +10,16 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const style = notificationStyles[toast.type];
   const Icon = style.icon;
 
+  // onClose cambia en cada render del padre; si fuera dependencia del efecto, el temporizador
+  // se reiniciaría con cada aviso nuevo y los toasts nunca se cerrarían (se acumulaban).
+  const closeRef = useRef(onClose);
   useEffect(() => {
-    const timer = window.setTimeout(onClose, TOAST_DURATION_MS);
+    closeRef.current = onClose;
+  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => closeRef.current(), TOAST_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="relative flex items-start gap-3 w-full bg-card border border-border rounded-lg shadow-lg pl-4 pr-3 py-3 overflow-hidden pointer-events-auto animate-toast-in">

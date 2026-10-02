@@ -46,8 +46,9 @@ export default function LocationMap({ position, onPick }: Props) {
     if (!position) return;
 
     const latlng: L.LatLngExpression = [position.lat, position.lon];
+    let circle: L.Circle | null = null;
     if (position.accuracy) {
-      L.circle(latlng, {
+      circle = L.circle(latlng, {
         radius: position.accuracy,
         color: '#2563EB',
         weight: 1,
@@ -62,7 +63,12 @@ export default function LocationMap({ position, onPick }: Props) {
       fillColor: '#2563EB',
       fillOpacity: 1,
     }).addTo(layer);
-    map.flyTo(latlng, 17, { duration: 0.8 });
+    // Ubicación aproximada (por IP): se encuadra todo el círculo en vez de acercar a un punto
+    if (circle && position.accuracy && position.accuracy > 1000) {
+      map.flyToBounds(circle.getBounds(), { duration: 0.8, padding: [20, 20] });
+    } else {
+      map.flyTo(latlng, 17, { duration: 0.8 });
+    }
   }, [position]);
 
   return <div ref={containerRef} className="w-full h-full" />;

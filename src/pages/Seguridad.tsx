@@ -1,32 +1,51 @@
-import { Shield, Users, Key, FileText, Lock, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
-import { sharedResponsibility, iamCards } from '../data/mockData';
+import { useEffect, useState } from 'react';
+import {
+  Shield, Users, Key, Lock, CheckCircle2, AlertTriangle, XCircle, Info, HelpCircle,
+  Activity, Cloud, Loader2, MapPin, Smartphone, Globe,
+} from 'lucide-react';
+import { sharedResponsibility } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
 import { regionLabel } from '../data/regionData';
 import ExportMenu from '../components/common/ExportMenu';
 import { buildSecurityReport } from '../utils/reportBuilders';
 import InfoTip from '../components/common/InfoTip';
+import { fetchSecurityReport, type CheckStatus, type SecurityCheck, type SecurityReport, type AccessEvent } from '../api/security';
 import {
   awsResponsibilityInfo,
   customerResponsibilityInfo,
   accountProtectionInfo,
   dataProtectionInfo,
-  complianceInfo,
   type InfoEntry,
 } from '../data/securityInfo';
 
-const statusIcon = {
+const statusIcon: Record<CheckStatus, React.ReactNode> = {
   healthy: <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />,
   review: <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />,
   issue: <XCircle className="w-4 h-4 text-[#DC2626]" />,
+  unknown: <HelpCircle className="w-4 h-4 text-text-secondary" />,
 };
 
-const statusBadge = {
+const statusBadge: Record<CheckStatus, string> = {
   healthy: 'bg-green-50 dark:bg-green-500/10 text-[#16A34A] border-green-200 dark:border-green-500/30',
   review: 'bg-amber-50 dark:bg-amber-500/10 text-[#F59E0B] border-amber-200 dark:border-amber-500/30',
   issue: 'bg-red-50 dark:bg-red-500/10 text-[#DC2626] border-red-200 dark:border-red-500/30',
+  unknown: 'bg-slate-50 dark:bg-slate-500/10 text-text-secondary border-border',
 };
 
-/** Etiqueta con tooltip si existe explicación para ella; si no, texto plano. */
+const statusText: Record<CheckStatus, string> = {
+  healthy: 'Correcto',
+  review: 'Revisar',
+  issue: 'Problema',
+  unknown: 'Sin datos',
+};
+
+const groupIcon = {
+  platform: Lock,
+  access: Activity,
+  planning: Shield,
+  compliance: Key,
+} as const;
+
 function Labeled({ label, info }: { label: string; info?: InfoEntry }) {
   if (!info) return <>{label}</>;
   return (
@@ -36,57 +55,236 @@ function Labeled({ label, info }: { label: string; info?: InfoEntry }) {
   );
 }
 
+const when = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+function CheckRow({ check }: { check: SecurityCheck }) {
+  return (
+    <div className="py-2.5 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <span className="mt-0.5 shrink-0">{statusIcon[check.status]}</span>
+          <div className="min-w-0">
+            <p className="text-sm text-text-main">{check.label}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{check.detail}</p>
+            {check.recommendation && check.status !== 'healthy' && (
+              <p className="text-xs text-primary mt-1">→ {check.recommendation}</p>
+            )}
+          </div>
+        </div>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 ${statusBadge[check.status]}`}>
+          {statusText[check.status]}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const eventIcon: Record<AccessEvent['type'], React.ReactNode> = {
+  impossible_travel: <MapPin className="w-4 h-4" />,
+  new_ip: <Globe className="w-4 h-4" />,
+  new_device: <Smartphone className="w-4 h-4" />,
+};
+
+/** Controles que necesitan una cuenta AWS: se muestran como "sin medir", nunca con valores inventados. */
+const AWS_PENDING = {
+  account: ['MFA de la cuenta raíz', 'MFA de usuarios IAM', 'Rotación de claves de acceso', 'Política de contraseñas', 'CloudTrail habilitado'],
+  data: ['Cifrado en reposo', 'Cifrado en tránsito', 'Copias de seguridad automáticas', 'Listas de control de acceso (ACL)', 'Bloqueo de acceso público en S3'],
+};
+
 export default function Seguridad() {
   const { region } = useRegion();
-  const securityItems = { score: region.securityScore, ...region.security };
+  const [report, setReport] = useState<SecurityReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchSecurityReport(region.id)
+      .then((r) => !cancelled && setReport(r))
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setReport(null);
+        setError(e instanceof Error ? e.message : 'No se pudo cargar la seguridad.');
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [region.id]);
+
+  const groups = report?.groups ?? [];
+  const score = report?.score ?? 0;
+  const scoreColor = score >= 80 ? 'text-[#16A34A]' : score >= 50 ? 'text-[#F59E0B]' : 'text-[#DC2626]';
+  const stats = report?.accessStats;
+  const events = report?.accessEvents ?? [];
+  const findings = groups.flatMap((g) => g.checks).filter((c) => c.status === 'issue' || c.status === 'review').length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-text-main">Seguridad</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Resumen de seguridad — IAM, protección de datos, cuentas y cumplimiento en{' '}
+            Postura de seguridad calculada con datos reales del sistema en{' '}
             <span className="font-medium text-text-main">
               {region.id} — {regionLabel(region)}
             </span>
           </p>
         </div>
-        <ExportMenu getReport={() => buildSecurityReport(region)} />
+        <ExportMenu getReport={() => buildSecurityReport(region, report)} />
       </div>
 
-      {/* Top summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-card rounded-xl border border-border p-4 col-span-2 lg:col-span-1">
-          <p className="text-xs text-text-secondary mb-1">Puntaje de seguridad</p>
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-bold text-[#16A34A]">{securityItems.score}%</span>
-          </div>
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <Loader2 className="w-4 h-4 animate-spin" /> Analizando accesos, planificaciones y configuración…
         </div>
-        {[
-          { label: 'IAM', status: securityItems.iam },
-          { label: 'Protección de datos', status: securityItems.dataProtection },
-          { label: 'Protección de cuentas', status: securityItems.accountProtection },
-          { label: 'Cumplimiento', status: securityItems.compliance },
-        ].map((item) => (
-          <div key={item.label} className="bg-card rounded-xl border border-border p-4">
-            <p className="text-xs text-text-secondary mb-2">{item.label}</p>
-            <div className="flex items-center gap-2">
-              {statusIcon[item.status]}
-              <span className={`text-sm font-medium capitalize ${item.status === 'healthy' ? 'text-[#16A34A]' : item.status === 'review' ? 'text-[#F59E0B]' : 'text-[#DC2626]'}`}>
-                {item.status === 'healthy' ? 'Saludable' : item.status === 'review' ? 'Revisar' : 'Problema'}
-              </span>
+      )}
+      {error && (
+        <div className={`rounded-xl border p-4 text-sm ${statusBadge.issue}`}>
+          No se pudo obtener el análisis de seguridad: {error}
+        </div>
+      )}
+
+      {report && (
+        <>
+          {/* Resumen */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="bg-card rounded-xl border border-border p-4 col-span-2 lg:col-span-1">
+              <p className="text-xs text-text-secondary mb-1">Puntaje de seguridad</p>
+              {score > 0 ? (
+                <>
+                  <span className={`text-3xl font-bold ${scoreColor}`}>{score}%</span>
+                  <p className="text-[11px] text-text-secondary mt-1">{findings} hallazgo(s) por revisar</p>
+                </>
+              ) : (
+                <span className="text-sm text-text-secondary">Sin datos suficientes</span>
+              )}
+            </div>
+            {groups.map((g) => {
+              const Icon = groupIcon[g.id];
+              return (
+                <div key={g.id} className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-xs text-text-secondary mb-2 flex items-center gap-1.5">
+                    <Icon className="w-3.5 h-3.5" /> {g.label}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {statusIcon[g.status]}
+                    <span className="text-sm font-medium text-text-main">{statusText[g.status]}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Qué se mide */}
+          <div className="flex items-start gap-2 text-xs text-text-secondary">
+            <Info className="w-4 h-4 shrink-0 text-primary mt-px" />
+            <p>
+              Cada control sale de datos reales: <span className="text-text-main font-medium">accesos</span> registrados en
+              Auditoría (GPS, IP, dispositivo), <span className="text-text-main font-medium">planificaciones</span> guardadas,
+              <span className="text-text-main font-medium"> configuración</span> del propio sistema y{' '}
+              <span className="text-text-main font-medium">cumplimiento</span> atestado manualmente. Lo que requiere AWS se
+              marca como “Sin medir”.
+            </p>
+          </div>
+
+          {/* Accesos: stats + eventos */}
+          {stats && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-[#2563EB]" /> Actividad de accesos
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                {[
+                  { label: 'Accesos (24 h)', value: stats.last24h },
+                  { label: 'Accesos (7 días)', value: stats.last7d },
+                  { label: 'IPs distintas', value: stats.uniqueIps },
+                  { label: 'Dispositivos', value: stats.uniqueDevices },
+                  { label: 'Lugares', value: stats.uniquePlaces },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-border p-3">
+                    <p className="text-[11px] text-text-secondary">{s.label}</p>
+                    <p className="text-lg font-semibold text-text-main">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-text-secondary mb-2">Último acceso: {when(stats.lastAccess)}</p>
+              {events.length === 0 ? (
+                <p className="text-sm text-[#16A34A] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Sin anomalías detectadas en los accesos recientes.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {events.map((e, i) => (
+                    <li key={`${e.type}-${e.at}-${i}`} className={`flex items-start gap-3 rounded-lg border p-3 ${statusBadge[e.severity]}`}>
+                      <span className="mt-0.5">{eventIcon[e.type]}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{e.title}</p>
+                        <p className="text-xs mt-0.5 break-words">{e.detail}</p>
+                      </div>
+                      <span className="text-[11px] shrink-0">{when(e.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Controles por grupo */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {groups.map((g) => {
+              const Icon = groupIcon[g.id];
+              return (
+                <div key={g.id} className="bg-card rounded-xl border border-border p-5">
+                  <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-[#2563EB]" /> {g.label}
+                  </h2>
+                  <div className="divide-y divide-border">
+                    {g.checks.map((c) => (
+                      <CheckRow key={c.id} check={c} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Pendiente de AWS */}
+          <div className="bg-card rounded-xl border border-dashed border-border p-5">
+            <h2 className="text-sm font-semibold text-text-main mb-1 flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-orange-500" /> Servicios de la cuenta AWS
+            </h2>
+            <p className="text-xs text-text-secondary mb-4">
+              {report.awsConnected
+                ? 'Cuenta AWS conectada.'
+                : 'Sin medir: requieren conectar una cuenta AWS. No se muestran valores de ejemplo.'}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+              {[...AWS_PENDING.account.map((l) => ({ l, info: accountProtectionInfo[l] })), ...AWS_PENDING.data.map((l) => ({ l, info: dataProtectionInfo[l] }))].map(
+                ({ l, info }) => (
+                  <div key={l} className="flex items-center justify-between">
+                    <span className="text-sm text-text-main">
+                      <Labeled label={l} info={info} />
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${statusBadge.unknown}`}>Sin medir</span>
+                  </div>
+                )
+              )}
             </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      {/* Shared Responsibility Model */}
+      {/* Modelo de responsabilidad compartida (contenido educativo) */}
       <div className="flex items-start gap-2 text-xs text-text-secondary">
         <Info className="w-4 h-4 shrink-0 text-primary mt-px" />
         <p>
-          <span className="font-medium text-text-main">Modelo de responsabilidad compartida:</span> AWS protege la
-          nube (la infraestructura) y tú proteges lo que hay <em>dentro</em> de ella. Pasa el cursor sobre cualquier
-          elemento con el icono ⓘ para ver qué significa.
+          <span className="font-medium text-text-main">Modelo de responsabilidad compartida:</span> AWS protege la nube (la
+          infraestructura) y tú proteges lo que hay <em>dentro</em> de ella. Pasa el cursor sobre cualquier elemento con el
+          icono ⓘ para ver qué significa.
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -127,100 +325,6 @@ export default function Seguridad() {
               </li>
             ))}
           </ul>
-        </div>
-      </div>
-
-      {/* IAM Cards */}
-      <div>
-        <h2 className="text-sm font-semibold text-text-main mb-3">IAM — Gestión de identidades y accesos</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {iamCards.map((card) => (
-            <div key={card.title} className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-text-secondary">{card.title}</span>
-                {statusIcon[card.status]}
-              </div>
-              <p className="text-lg font-semibold text-text-main">{card.value}</p>
-              <p className="text-[11px] text-text-secondary mt-1">{card.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Account & Data Protection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
-            <Key className="w-4 h-4 text-[#2563EB]" />
-            Protección de cuentas
-          </h2>
-          <div className="space-y-3">
-            {[
-              { label: 'MFA de la cuenta raíz', status: 'healthy' as const },
-              { label: 'MFA de usuarios IAM', status: 'healthy' as const },
-              { label: 'Rotación de claves de acceso', status: 'review' as const },
-              { label: 'Política de contraseñas', status: 'healthy' as const },
-              { label: 'CloudTrail habilitado', status: 'healthy' as const },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-text-main"><Labeled label={item.label} info={accountProtectionInfo[item.label]} /></span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
-                  {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-[#16A34A]" />
-            Protección de datos
-          </h2>
-          <div className="space-y-3">
-            {[
-              { label: 'Cifrado en reposo', status: 'healthy' as const },
-              { label: 'Cifrado en tránsito', status: 'healthy' as const },
-              { label: 'Copias de seguridad automáticas', status: 'healthy' as const },
-              { label: 'Listas de control de acceso (ACL)', status: 'review' as const },
-              { label: 'Bloqueo de acceso público en S3', status: 'healthy' as const },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-text-main"><Labeled label={item.label} info={dataProtectionInfo[item.label]} /></span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusBadge[item.status]}`}>
-                  {item.status === 'healthy' ? '🟢 Correcto' : item.status === 'review' ? '🟡 Revisión' : '🔴 Problema'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Compliance */}
-      <div className="bg-card rounded-xl border border-border p-5">
-        <h2 className="text-sm font-semibold text-text-main mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#2563EB]" />
-          Cumplimiento
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { name: 'ISO 27001', status: 'healthy' as const },
-            { name: 'SOC 2', status: 'healthy' as const },
-            { name: 'GDPR', status: 'healthy' as const },
-            { name: 'HIPAA', status: 'review' as const },
-          ].map((item) => (
-            <div
-              key={item.name}
-              className={`rounded-lg border p-3 ${statusBadge[item.status]}`}
-            >
-              <p className="text-sm font-medium">
-                <Labeled label={item.name} info={complianceInfo[item.name]} />
-              </p>
-              <p className="text-xs mt-1">
-                {item.status === 'healthy' ? '🟢 Conforme' : '🟡 En revisión'}
-              </p>
-            </div>
-          ))}
         </div>
       </div>
     </div>
