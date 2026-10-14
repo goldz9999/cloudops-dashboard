@@ -9,6 +9,7 @@ import { regionLabel, type HealthStatus } from '../data/regionData';
 import ExportMenu from '../components/common/ExportMenu';
 import { buildSecurityReport } from '../utils/reportBuilders';
 import InfoTip from '../components/common/InfoTip';
+import ErpSecurityPanel from '../components/seguridad/ErpSecurityPanel';
 import {
   getMockSecurity,
   getMockSecurityReport,
@@ -131,6 +132,9 @@ export default function Seguridad() {
         </div>
         <ExportMenu getReport={() => buildSecurityReport(region, getMockSecurityReport(region.id))} />
       </div>
+
+      {/* Seguridad real del ERP EnterpriseCloud (medida por Backencito) */}
+      <ErpSecurityPanel />
 
       {/* Resumen */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
