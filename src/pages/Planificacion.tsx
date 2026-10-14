@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegion } from '../context/useRegion';
 import { useNotifications } from '../context/useNotifications';
@@ -124,8 +124,8 @@ export default function Planificacion() {
 
       setPlace(placeRes);
       setRecommendation(rec);
+      // Solo se aplica a la región del formulario; la región global del sistema no cambia
       setForm((prev) => ({ ...prev, region: rec.regionId }));
-      setRegionId(rec.regionId);
 
       notify({
         type: 'success',
@@ -146,7 +146,12 @@ export default function Planificacion() {
     }
   };
 
+  // En desarrollo, React (StrictMode) ejecuta los efectos dos veces: sin esta marca se detectaba
+  // la ubicación dos veces y aparecían dos avisos de "Región recomendada".
+  const autoDetected = useRef(false);
   useEffect(() => {
+    if (autoDetected.current) return;
+    autoDetected.current = true;
     void detectLocationAndRecommend();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -239,6 +244,10 @@ export default function Planificacion() {
     migration: form.migration,
     selected: form.selected,
   };
+  // Las propuestas guardadas traen nombres ('EC2', 'Route 53') y el formulario ids ('ec2', 'route53'):
+  // se pasan a ids para que el resumen y la arquitectura muestren los servicios de la propuesta.
+  const NAME_TO_ID = Object.fromEntries(Object.entries(ID_TO_NAME).map(([id, name]) => [name.toLowerCase(), id]));
+  const summarySelected = summary.selected.map((s) => NAME_TO_ID[s.toLowerCase()] ?? s.toLowerCase());
 
   return (
     <div className="space-y-6">
@@ -312,13 +321,13 @@ export default function Planificacion() {
             }}
           />
           <ProposalSummary
-            summary={summary}
+            summary={{ ...summary, selected: summarySelected }}
             services={availableServices}
             isSaved={selectedProposal !== null}
             onApplyToCosts={selectedProposal ? () => void applyProposalToCosts() : undefined}
             applying={applying}
           />
-          <ArchitecturePreview selected={summary.selected} />
+          <ArchitecturePreview selected={summarySelected} />
         </div>
       </div>
     </div>

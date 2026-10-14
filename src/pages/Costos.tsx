@@ -10,6 +10,7 @@ import CostosForm, { type CostForm } from '../components/costos/CostosForm';
 import { SERVICE_OPTIONS } from '../components/costos/costoData';
 import CostosCharts from '../components/costos/CostosCharts';
 import CostosSummary from '../components/costos/CostosSummary';
+import { COST_COLORS, usd, type CostSlice } from '../components/costos/costFormat';
 import { api } from '../api/client';
 import { fetchRegionCosts } from '../api/proposals';
 
@@ -136,17 +137,19 @@ function CostosContent({ regionId, regionText }: { regionId: string; regionText:
     }
   };
 
+  // Por servicio, de mayor a menor costo; cada servicio tiene un color fijo en toda la vista
   const costByService = Object.values(
     rows.reduce<Record<string, { name: string; value: number }>>((acc, r) => {
       acc[r.service] = { name: r.service, value: +((acc[r.service]?.value ?? 0) + r.monthly).toFixed(2) };
       return acc;
     }, {})
-  );
-  const costDistribution = costByService.map((c) => ({
+  ).sort((a, b) => b.value - a.value);
+  const costDistribution: CostSlice[] = costByService.map((c, i) => ({
     ...c,
     percentage: totalMonthly ? Math.round((c.value / totalMonthly) * 100) : 0,
+    color: COST_COLORS[i % COST_COLORS.length],
   }));
-  const barData = costByService.map((c) => ({ name: c.name, monthly: c.value, annual: +(c.value * 12).toFixed(2) }));
+  const colorOf = (service: string) => costDistribution.find((c) => c.name === service)?.color ?? '#94A3B8';
 
   return (
     <div className="space-y-6">
@@ -175,37 +178,44 @@ function CostosContent({ regionId, regionText }: { regionId: string; regionText:
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Costo mensual', value: `$${totalMonthly.toFixed(2)}`, icon: DollarSign, color: 'text-[#F59E0B]' },
+          { label: 'Costo mensual', value: usd(totalMonthly), icon: DollarSign, color: 'text-[#F59E0B] bg-amber-50 dark:bg-amber-500/10' },
+          { label: 'Costo anual', value: usd(totalAnnual), icon: TrendingUp, color: 'text-[#F59E0B] bg-amber-50 dark:bg-amber-500/10' },
+          { label: 'Servicios utilizados', value: String(rows.length), icon: Server, color: 'text-[#2563EB] bg-blue-50 dark:bg-blue-500/10' },
           {
-            label: 'Costo anual',
-            value: `$${totalAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-            icon: TrendingUp,
-            color: 'text-[#F59E0B]',
+            label: 'Recurso de mayor costo',
+            value: highest?.service || '—',
+            hint: highest ? usd(highest.monthly) : undefined,
+            icon: DollarSign,
+            color: 'text-[#DC2626] bg-red-50 dark:bg-red-500/10',
           },
-          { label: 'Servicios utilizados', value: rows.length, icon: Server, color: 'text-[#2563EB]' },
-          { label: 'Recurso de mayor costo', value: highest?.service || '—', icon: DollarSign, color: 'text-[#DC2626]' },
         ].map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4 min-w-0">
-              <Icon className={`w-4 h-4 ${kpi.color} mb-2`} />
-              <p className="text-xl font-semibold text-text-main truncate">{kpi.value}</p>
-              <p className="text-xs text-text-secondary mt-0.5 truncate">{kpi.label}</p>
+            <div key={kpi.label} className="bg-card rounded-xl border border-border p-4 min-w-0 flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${kpi.color}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-text-secondary truncate">{kpi.label}</p>
+                <p className="text-lg font-semibold text-text-main truncate tabular-nums">
+                  {kpi.value}
+                  {kpi.hint && <span className="ml-1.5 text-xs font-normal text-text-secondary">{kpi.hint}</span>}
+                </p>
+              </div>
             </div>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* En pantallas grandes la tarjeta toma el alto de la columna derecha (sin espacio vacío debajo) */}
-        <div className="xl:col-span-2 min-w-0 xl:relative xl:min-h-[420px]">
-          <div className="xl:absolute xl:inset-0">
-            <CostosTable rows={rows} totalMonthly={totalMonthly} onUpdateRow={updateRow} onRemoveRow={removeRow} />
-          </div>
+      {/* Columna izquierda: tabla y debajo los gráficos. Columna derecha (fija): agregar recurso + resumen.
+          En pantallas pequeñas el orden es tabla → formulario → gráficos. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-[auto_1fr] gap-4 items-start">
+        <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+          <CostosTable rows={rows} totalMonthly={totalMonthly} colorOf={colorOf} onUpdateRow={updateRow} onRemoveRow={removeRow} />
         </div>
-        <div className="space-y-4 min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2">
           <CostosForm
             form={form}
             onServiceChange={handleServiceChange}
@@ -215,14 +225,13 @@ function CostosContent({ regionId, regionText }: { regionId: string; regionText:
           <CostosSummary
             totalMonthly={totalMonthly}
             totalAnnual={totalAnnual}
-            highestService={highest?.service}
+            highest={highest}
             costDistribution={costDistribution}
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CostosCharts costDistribution={costDistribution} barData={barData} />
+        <div className="min-w-0 xl:col-start-1 xl:row-start-2">
+          <CostosCharts costDistribution={costDistribution} totalMonthly={totalMonthly} />
+        </div>
       </div>
     </div>
   );

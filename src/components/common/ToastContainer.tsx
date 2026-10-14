@@ -4,7 +4,8 @@ import { useNotifications } from '../../context/useNotifications';
 import type { Toast } from '../../context/notificationContextValue';
 import { notificationStyles } from './notificationStyles';
 
-const TOAST_DURATION_MS = 4500;
+/** Tiempo que un aviso permanece visible antes de cerrarse solo. */
+const TOAST_DURATION_MS = 2500;
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const style = notificationStyles[toast.type];
