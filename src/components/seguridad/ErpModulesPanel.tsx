@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Boxes, Coins, Fingerprint, Target } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, Boxes, CheckCircle2, CircleHelp, Coins, Fingerprint, Target, X } from 'lucide-react';
 import {
     fetchErpModules,
+    type AwsServiceCost,
     type ControlState,
     type ErpModulesReport,
     type ModuleControl,
     type ModuleSecurity,
 } from '../../api/erpSecurity';
+import { SERVICE_INFO } from '../../data/erpServiceInfo';
 
 const stateLabel: Record<ControlState, string> = { measured: 'Medido', declared: 'Declarado', gap: 'Brecha' };
 const stateBadge: Record<ControlState, string> = {
@@ -19,6 +22,16 @@ const scoreColor = (n: number) => (n >= 90 ? 'text-[#16A34A]' : n >= 75 ? 'text-
 const barColor = (n: number) => (n >= 90 ? 'bg-[#16A34A]' : n >= 75 ? 'bg-[#F59E0B]' : 'bg-[#DC2626]');
 const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
+/** Lo que muestra el modal: un módulo o el eje IAM. */
+interface DetailTarget {
+    title: string;
+    score: number;
+    withAws: number;
+    /** Porcentaje crítico del módulo (no aplica a IAM). */
+    critical?: number;
+    controls: ModuleControl[];
+}
+
 function ScoreBar({ score, withAws }: { score: number; withAws: number }) {
     return (
         <div>
@@ -27,32 +40,27 @@ function ScoreBar({ score, withAws }: { score: number; withAws: number }) {
                 <div className={`absolute inset-y-0 left-0 rounded-full ${barColor(score)}`} style={{ width: `${score}%` }} />
             </div>
             <p className="text-[11px] text-text-secondary mt-1">
-                Actual <span className={`font-semibold ${scoreColor(score)}`}>{score}</span> · con servicios AWS{' '}
-                <span className="font-semibold text-text-main">{withAws}</span> · nunca 100
+                Actual <span className={`font-semibold ${scoreColor(score)}`}>{score}</span> · con AWS{' '}
+                <span className="font-semibold text-text-main">{withAws}</span>
             </p>
         </div>
     );
 }
 
-function ControlList({ controls }: { controls: ModuleControl[] }) {
+function OpenButton({ onClick }: { onClick: () => void }) {
     return (
-        <ul className="divide-y divide-border mt-3">
-            {controls.map((c) => (
-                <li key={c.id} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <div className="min-w-0">
-                        <p className="text-sm text-text-main">{c.label}</p>
-                        <p className="text-xs text-text-secondary">{c.detail}</p>
-                    </div>
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${stateBadge[c.state]}`}>
-                        {stateLabel[c.state]}
-                    </span>
-                </li>
-            ))}
-        </ul>
+        <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={onClick}
+            className="mt-3 text-xs font-medium text-primary hover:underline"
+        >
+            Ver brechas y soluciones →
+        </button>
     );
 }
 
-function ModuleCard({ m }: { m: ModuleSecurity }) {
+function ModuleCard({ m, onOpen }: { m: ModuleSecurity; onOpen: (t: DetailTarget) => void }) {
     const gaps = m.controls.filter((c) => c.state === 'gap').length;
     return (
         <div className="rounded-lg border border-border p-4">
@@ -62,17 +70,189 @@ function ModuleCard({ m }: { m: ModuleSecurity }) {
                         <span className="text-text-secondary tabular-nums">#{m.rank}</span> {m.label}
                     </h3>
                     <p className="text-xs text-text-secondary">
-                        Criticidad {Math.round(m.criticality * 100)} % · {gaps} brecha{gaps === 1 ? '' : 's'} que cubriría AWS
+                        Porcentaje crítico {Math.round(m.criticality * 100)} % · {gaps} brecha{gaps === 1 ? '' : 's'}
                     </p>
                 </div>
                 <span className={`text-lg font-semibold tabular-nums ${scoreColor(m.score)}`}>{m.score}</span>
             </div>
             <ScoreBar score={m.score} withAws={m.scoreWithAws} />
-            <details className="mt-3 group">
-                <summary className="text-xs font-medium text-primary cursor-pointer select-none">Ver controles</summary>
-                <ControlList controls={m.controls} />
-            </details>
+            <OpenButton
+                onClick={() =>
+                    onOpen({
+                        title: m.label,
+                        score: m.score,
+                        withAws: m.scoreWithAws,
+                        critical: Math.round(m.criticality * 100),
+                        controls: m.controls,
+                    })
+                }
+            />
         </div>
+    );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex gap-3">
+            <dt className="w-24 shrink-0 text-xs text-text-secondary pt-0.5">{label}</dt>
+            <dd className="text-sm text-text-main min-w-0">{children}</dd>
+        </div>
+    );
+}
+
+function DetailModal({ target, services, onClose }: { target: DetailTarget; services: AwsServiceCost[]; onClose: () => void }) {
+    const closeRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKey);
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        closeRef.current?.focus();
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [onClose]);
+
+    const gaps = target.controls.filter((c) => c.state === 'gap');
+    const rest = target.controls.filter((c) => c.state !== 'gap');
+    const improve = rest.filter((c) => c.value !== null && c.value < 1);
+    const ok = rest.filter((c) => c.value === 1);
+    const unmeasured = rest.filter((c) => c.value === null);
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="erp-detail-title"
+                className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-card rounded-xl border border-border shadow-xl"
+            >
+                <div className="sticky top-0 bg-card flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-border">
+                    <div className="min-w-0">
+                        <h2 id="erp-detail-title" className="text-base font-semibold text-text-main">
+                            {target.title}
+                        </h2>
+                        <p className="text-xs text-text-secondary mt-1">
+                            Actual <span className={`font-semibold ${scoreColor(target.score)}`}>{target.score}</span> · con AWS{' '}
+                            <span className="font-semibold text-text-main">{target.withAws}</span>
+                            {target.critical !== undefined && <> · Porcentaje crítico {target.critical} %</>}
+                        </p>
+                    </div>
+                    <button
+                        ref={closeRef}
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                        className="p-1.5 rounded-lg text-text-secondary hover:text-text-main hover:bg-border/40"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="px-5 py-4 space-y-5">
+                    <section>
+                        <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">
+                            Brechas y cómo las cubre AWS ({gaps.length})
+                        </h3>
+                        {gaps.length === 0 ? (
+                            <p className="text-sm text-text-secondary">Este módulo no tiene brechas registradas.</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {gaps.map((c) => {
+                                    const info = c.service ? SERVICE_INFO[c.service] : undefined;
+                                    const svc = services.find((s) => s.id === c.service);
+                                    return (
+                                        <li key={c.id} className="rounded-lg border border-border p-4">
+                                            <p className="text-sm font-medium text-text-main flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-[#F59E0B] shrink-0" />
+                                                {info?.gap ?? c.label}
+                                            </p>
+                                            <dl className="mt-2 space-y-1.5">
+                                                <Row label="Servicio AWS">
+                                                    <span className="font-medium">{info?.name ?? c.label}</span>
+                                                </Row>
+                                                <Row label="Qué hará">{info?.does ?? c.detail}</Row>
+                                            </dl>
+                                            {svc && (
+                                                <p className="text-[11px] text-text-secondary mt-2">
+                                                    Cubre ~{Math.round(svc.coverage * 100)} % del riesgo ·{' '}
+                                                    {svc.monthlyUsd === null ? 'costo por cotizar' : `≈ ${usd(svc.monthlyUsd)}/mes (estimado)`}
+                                                    {svc.covers.length > 1 ? ' · un solo pago para varios módulos' : ''}
+                                                </p>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </section>
+
+                    {improve.length > 0 && (
+                        <section>
+                            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Por mejorar</h3>
+                            <ul className="space-y-2">
+                                {improve.map((c) => (
+                                    <li key={c.id} className="flex items-start gap-2 text-sm">
+                                        <AlertTriangle className="w-4 h-4 text-[#F59E0B] mt-0.5 shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-text-main">{c.label}</p>
+                                            <p className="text-xs text-text-secondary">{c.detail}</p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+
+                    {(ok.length > 0 || unmeasured.length > 0) && (
+                        <section>
+                            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Lo que ya cumple</h3>
+                            <ul className="divide-y divide-border">
+                                {ok.map((c) => (
+                                    <li key={c.id} className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
+                                        <span className="flex items-center gap-2 text-sm text-text-main min-w-0">
+                                            <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" /> {c.label}
+                                        </span>
+                                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${stateBadge[c.state]}`}>
+                                            {stateLabel[c.state]}
+                                        </span>
+                                    </li>
+                                ))}
+                                {unmeasured.map((c) => (
+                                    <li key={c.id} className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0">
+                                        <span className="flex items-center gap-2 text-sm text-text-secondary min-w-0">
+                                            <CircleHelp className="w-4 h-4 shrink-0" /> {c.label}
+                                        </span>
+                                        <span className="text-[11px] text-text-secondary shrink-0">Sin medir</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-border">
+                    <p className="text-[11px] text-text-secondary">Cobertura y costos son estimaciones de referencia.</p>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-main hover:bg-border/40"
+                    >
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -80,6 +260,8 @@ export default function ErpModulesPanel({ refreshKey = 0 }: { refreshKey?: numbe
     const [report, setReport] = useState<ErpModulesReport | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState<DetailTarget | null>(null);
+    const closeModal = useCallback(() => setSelected(null), []);
 
     useEffect(() => {
         let alive = true;
@@ -106,6 +288,7 @@ export default function ErpModulesPanel({ refreshKey = 0 }: { refreshKey?: numbe
     }
 
     const { summary, modules, services = [], notes = [], iam } = report;
+    const iamGaps = iam ? iam.controls.filter((c) => c.state === 'gap').length : 0;
 
     return (
         <div className="bg-card rounded-xl border border-border p-5 space-y-5">
@@ -166,7 +349,7 @@ export default function ErpModulesPanel({ refreshKey = 0 }: { refreshKey?: numbe
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {modules.map((m) => (
-                        <ModuleCard key={m.id} m={m} />
+                        <ModuleCard key={m.id} m={m} onOpen={setSelected} />
                     ))}
                 </div>
             </div>
@@ -178,12 +361,23 @@ export default function ErpModulesPanel({ refreshKey = 0 }: { refreshKey?: numbe
                             <h3 className="text-sm font-medium text-text-main flex items-center gap-2">
                                 <Fingerprint className="w-4 h-4 text-[#2563EB]" /> Identidad y acceso (IAM)
                             </h3>
-                            <p className="text-xs text-text-secondary">Eje aparte: se mide por separado de la seguridad de los módulos.</p>
+                            <p className="text-xs text-text-secondary">
+                                Eje aparte · {iamGaps} brecha{iamGaps === 1 ? '' : 's'}
+                            </p>
                         </div>
                         <span className={`text-lg font-semibold tabular-nums ${scoreColor(iam.score)}`}>{iam.score}</span>
                     </div>
                     <ScoreBar score={iam.score} withAws={iam.scoreWithAws} />
-                    <ControlList controls={iam.controls} />
+                    <OpenButton
+                        onClick={() =>
+                            setSelected({
+                                title: 'Identidad y acceso (IAM)',
+                                score: iam.score,
+                                withAws: iam.scoreWithAws,
+                                controls: iam.controls,
+                            })
+                        }
+                    />
                 </div>
             )}
 
@@ -226,6 +420,8 @@ export default function ErpModulesPanel({ refreshKey = 0 }: { refreshKey?: numbe
                     <li key={n}>{n}</li>
                 ))}
             </ul>
+
+            {selected && <DetailModal target={selected} services={services} onClose={closeModal} />}
         </div>
     );
 }
