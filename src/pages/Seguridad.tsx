@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Shield, Users, KeyRound, Lock, CheckCircle2, AlertTriangle, XCircle, Info, Network, Radar,
-  ScrollText, Database, HardDrive, Server, FlaskConical, Fingerprint, ClipboardCheck, Cloud, ShieldCheck,
+  ScrollText, Database, HardDrive, Server, FlaskConical, Fingerprint, ClipboardCheck, Cloud, ShieldCheck, ScanSearch,
 } from 'lucide-react';
 import { sharedResponsibility } from '../data/mockData';
 import { useRegion } from '../context/useRegion';
@@ -10,6 +10,7 @@ import ExportMenu from '../components/common/ExportMenu';
 import { buildSecurityReport } from '../utils/reportBuilders';
 import InfoTip from '../components/common/InfoTip';
 import ErpSecurityTab from '../components/seguridad/ErpSecurityTab';
+import ProjectAnalysisTab from '../components/seguridad/ProjectAnalysisTab';
 import {
   getMockSecurity,
   getMockSecurityReport,
@@ -99,7 +100,7 @@ export default function Seguridad() {
   const { region } = useRegion();
   const data = useMemo(() => getMockSecurity(region.id), [region.id]);
   const [severity, setSeverity] = useState<Severity | 'Todas'>('Todas');
-  const [tab, setTab] = useState<'cloud' | 'erp'>('cloud');
+  const [tab, setTab] = useState<'cloud' | 'erp' | 'project'>('cloud');
 
   const open = data.findings.filter((f) => f.state !== 'Resuelto');
   const findings = severity === 'Todas' ? data.findings : data.findings.filter((f) => f.severity === severity);
@@ -134,8 +135,10 @@ export default function Seguridad() {
                   {region.id} — {regionLabel(region)}
                 </span>
               </>
-            ) : (
+            ) : tab === 'erp' ? (
               'Seguridad del sistema ERP EnterpriseCloud, medida en vivo y analizada por módulo.'
+            ) : (
+              'Sube los archivos de un proyecto y la IA detecta fallas de seguridad y escalabilidad, y recomienda servicios de AWS.'
             )}
           </p>
         </div>
@@ -147,6 +150,7 @@ export default function Seguridad() {
         {([
           { id: 'cloud', label: 'Seguridad en la nube (AWS)', icon: Cloud },
           { id: 'erp', label: 'ERP EnterpriseCloud', icon: ShieldCheck },
+          { id: 'project', label: 'Análisis de proyecto (IA)', icon: ScanSearch },
         ] as const).map((t) => {
           const Icon = t.icon;
           return (
@@ -167,6 +171,8 @@ export default function Seguridad() {
 
       {tab === 'erp' ? (
         <ErpSecurityTab />
+      ) : tab === 'project' ? (
+        <ProjectAnalysisTab />
       ) : (
         <>
           {/* Resumen */}
