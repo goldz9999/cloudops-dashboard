@@ -60,6 +60,17 @@ export interface AnalysisStatus {
     maxTotalKb: number;
     maxZipMb: number;
     testsRiskThreshold: number;
+    /** Segundos que faltan para poder reintentar tras un límite de cuota de Gemini (0 = libre). */
+    cooldownSeconds?: number;
+}
+
+/** Error del análisis con la espera sugerida por el servidor (cabecera Retry-After). */
+export class AnalysisError extends ApiError {
+    retryAfter: number;
+    constructor(status: number, message: string, retryAfter = 0) {
+        super(status, message);
+        this.retryAfter = retryAfter;
+    }
 }
 
 export const fetchAnalysisStatus = () => api<AnalysisStatus>('/project-analysis/status');
@@ -90,7 +101,8 @@ export async function analyzeProject(items: UploadItem[], signal?: AbortSignal):
         } catch {
             /* ignore */
         }
-        throw new ApiError(res.status, message);
+        const retryAfter = Number(res.headers.get('Retry-After')) || 0;
+        throw new AnalysisError(res.status, message, retryAfter);
     }
     return res.json() as Promise<ProjectAnalysisReport>;
 }

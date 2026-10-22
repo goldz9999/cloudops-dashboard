@@ -37,8 +37,8 @@ export default function ErpSecurityTab() {
                                 aria-selected={active}
                                 onClick={() => setSub(t.id)}
                                 className={`group flex items-center gap-3 text-left rounded-xl border px-3.5 py-2.5 transition-all duration-200 ${active
-                                        ? 'border-primary bg-primary/5 shadow-sm'
-                                        : 'border-border bg-card hover:border-primary/40 hover:-translate-y-0.5'
+                                    ? 'border-primary bg-primary/5 shadow-sm'
+                                    : 'border-border bg-card hover:border-primary/40 hover:-translate-y-0.5'
                                     }`}
                             >
                                 <span
